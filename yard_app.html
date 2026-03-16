@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Row25 Yard</title>
+<link rel="manifest" href="#" id="manifest-link">
+<meta name="theme-color" content="#0a0a0a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Row25 Yard">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0a0a0a;
+    --surface: #141414;
+    --surface2: #1e1e1e;
+    --border: #2a2a2a;
+    --accent: #f5a623;
+    --accent2: #e8453c;
+    --green: #22c55e;
+    --yellow: #eab308;
+    --red: #ef4444;
+    --text: #f0f0f0;
+    --muted: #666;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body: 'Barlow', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    overscroll-behavior: none;
+  }
+
+  /* ── HEADER ── */
+  #header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: calc(var(--safe-top) + 10px) 16px 10px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .header-brand {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 800; letter-spacing: 1px;
+    color: var(--accent);
+  }
+  .header-brand span { color: var(--text); }
+  .header-yard {
+    font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+    text-align: right; max-width: 180px; line-height: 1.3;
+  }
+  .header-yard b { color: var(--accent); display: block; font-size: 12px; }
+
+  /* ── NAV ── */
+  #nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    padding-bottom: var(--safe-bottom);
+  }
+  .nav-btn {
+    flex: 1; padding: 10px 4px 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; color: var(--muted);
+    font-family: var(--font-display); font-size: 10px; font-weight: 600;
+    letter-spacing: 0.5px; text-transform: uppercase; cursor: pointer;
+    transition: color 0.15s;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn svg { width: 20px; height: 20px; }
+
+  /* ── MAIN ── */
+  #main {
+    padding-top: 68px;
+    padding-bottom: calc(60px + var(--safe-bottom));
+    min-height: 100dvh;
+  }
+
+  /* ── SCREENS ── */
+  .screen { display: none; padding: 16px; }
+  .screen.active { display: block; }
+
+  /* ── SECTION HEADERS ── */
+  .section-label {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* ── YARD STATUS CARD ── */
+  .yard-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .yard-card-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .yard-name {
+    font-family: var(--font-display);
+    font-size: 20px; font-weight: 700; line-height: 1.1;
+    color: var(--text);
+  }
+  .yard-dist {
+    font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+    background: rgba(245,166,35,0.1); border: 1px solid rgba(245,166,35,0.3);
+    padding: 3px 8px; border-radius: 20px;
+  }
+  .yard-meta {
+    font-size: 12px; color: var(--muted); display: flex; gap: 12px;
+  }
+
+  /* ── STATS ROW ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+  }
+  .stat-val {
+    font-family: var(--font-display);
+    font-size: 26px; font-weight: 800; color: var(--accent);
+    line-height: 1;
+  }
+  .stat-val.green { color: var(--green); }
+  .stat-val.red { color: var(--red); }
+  .stat-lbl {
+    font-size: 10px; color: var(--muted); margin-top: 3px;
+    font-family: var(--font-display); text-transform: uppercase; letter-spacing: 1px;
+  }
+
+  /* ── CAR CARDS ── */
+  .car-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 12px;
+    overflow: hidden;
+    transition: border-color 0.15s;
+  }
+  .car-card.active-pull { border-color: var(--accent); }
+  .car-card-header {
+    display: flex; align-items: stretch; gap: 0;
+  }
+  .car-color-bar {
+    width: 5px; flex-shrink: 0;
+    border-radius: 12px 0 0 0;
+  }
+  .car-card-main {
+    flex: 1; padding: 12px 12px 12px 10px;
+  }
+  .car-row-badge {
+    font-family: var(--font-display);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px;
+    color: var(--muted); text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .car-title {
+    font-family: var(--font-display);
+    font-size: 18px; font-weight: 700; color: var(--text);
+    line-height: 1.1; margin-bottom: 4px;
+  }
+  .car-platform {
+    font-size: 11px; color: var(--muted); font-family: var(--font-mono);
+  }
+  .car-card-actions {
+    display: flex; flex-direction: column;
+    justify-content: center; gap: 6px;
+    padding: 10px 10px 10px 0;
+  }
+  .btn-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .btn-icon:active { transform: scale(0.93); background: var(--border); }
+  .btn-icon svg { width: 16px; height: 16px; color: var(--muted); }
+  .btn-icon.accent { border-color: var(--accent); background: rgba(245,166,35,0.1); }
+  .btn-icon.accent svg { color: var(--accent); }
+
+  .car-parts-preview {
+    border-top: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 12px; color: var(--muted);
+    line-height: 1.5;
+  }
+  .car-parts-preview .part-tag {
+    display: inline-block;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 2px 8px; margin: 2px 3px 2px 0;
+    font-family: var(--font-mono); font-size: 10px; color: var(--text);
+  }
+  .car-parts-preview .part-tag.pulled {
+    background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.4); color: var(--green);
+  }
+  .car-roi {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .roi-val { font-family: var(--font-display); font-weight: 700; font-size: 14px; }
+  .roi-val.good { color: var(--green); }
+  .roi-val.maybe { color: var(--yellow); }
+  .roi-val.bad { color: var(--red); }
+  .roi-verdict {
+    font-size: 10px; font-family: var(--font-display); font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .verdict-good { background: rgba(34,197,94,0.15); color: var(--green); border: 1px solid rgba(34,197,94,0.4); }
+  .verdict-maybe { background: rgba(234,179,8,0.15); color: var(--yellow); border: 1px solid rgba(234,179,8,0.4); }
+  .verdict-skip { background: rgba(239,68,68,0.15); color: var(--red); border: 1px solid rgba(239,68,68,0.4); }
+
+  /* ── PULL SCREEN ── */
+  .pull-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 16px;
+  }
+  .pull-car-name {
+    font-family: var(--font-display);
+    font-size: 22px; font-weight: 800; color: var(--accent);
+    margin-bottom: 2px;
+  }
+  .pull-car-meta { font-size: 12px; color: var(--muted); }
+
+  .part-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .part-item.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px rgba(245,166,35,0.2);
+  }
+  .part-item.done { border-color: rgba(34,197,94,0.4); }
+  .part-item.skipped { opacity: 0.5; }
+
+  .part-item-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px;
+    cursor: pointer;
+  }
+  .part-status-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    background: var(--border);
+  }
+  .part-status-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .part-status-dot.done { background: var(--green); }
+  .part-status-dot.skipped { background: var(--red); }
+
+  .part-name {
+    flex: 1;
+    font-family: var(--font-display);
+    font-size: 16px; font-weight: 700; color: var(--text);
+  }
+  .part-price {
+    font-family: var(--font-mono);
+    font-size: 12px; color: var(--accent); font-weight: 600;
+  }
+
+  .part-body {
+    display: none;
+    padding: 0 14px 14px;
+    border-top: 1px solid var(--border);
+  }
+  .part-body.open { display: block; }
+
+  /* ── TIMER ── */
+  .timer-display {
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 52px; font-weight: 800;
+    color: var(--text); letter-spacing: 2px;
+    margin: 16px 0 8px;
+    line-height: 1;
+  }
+  .timer-display.running { color: var(--accent); }
+  .timer-display.done { color: var(--green); }
+
+  .timer-btns {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px; margin-bottom: 14px;
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: var(--font-display); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn.primary {
+    background: var(--accent); border-color: var(--accent);
+    color: #000;
+  }
+  .btn.success {
+    background: rgba(34,197,94,0.15); border-color: var(--green); color: var(--green);
+  }
+  .btn.danger {
+    background: rgba(239,68,68,0.1); border-color: var(--red); color: var(--red);
+  }
+  .btn.full { width: 100%; }
+  .btn-sm {
+    padding: 7px 12px; font-size: 11px; border-radius: 8px;
+  }
+
+  /* ── PHOTO CAPTURE ── */
+  .photo-area {
+    background: var(--surface2); border: 1px dashed var(--border);
+    border-radius: 10px; padding: 16px;
+    text-align: center; margin-bottom: 10px;
+    cursor: pointer; position: relative; overflow: hidden;
+  }
+  .photo-area img {
+    width: 100%; border-radius: 8px; display: block;
+  }
+  .photo-area .placeholder {
+    color: var(--muted); font-size: 13px; padding: 20px 0;
+  }
+  .photo-area .placeholder svg { width: 32px; height: 32px; margin-bottom: 8px; display: block; margin-left: auto; margin-right: auto; }
+  input[type=file] { display: none; }
+
+  /* ── ASSESSMENT CARD ── */
+  .assessment {
+    border-radius: 10px; padding: 12px 14px;
+    margin-top: 10px; font-size: 13px; line-height: 1.5;
+  }
+  .assessment.buy { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.4); }
+  .assessment.bench { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.4); }
+  .assessment.skip { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.4); }
+  .assessment-verdict {
+    font-family: var(--font-display); font-size: 20px; font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .assessment.buy .assessment-verdict { color: var(--green); }
+  .assessment.bench .assessment-verdict { color: var(--yellow); }
+  .assessment.skip .assessment-verdict { color: var(--red); }
+
+  /* ── PULL LIST TOTAL ── */
+  .pull-total {
+    position: sticky; bottom: calc(60px + var(--safe-bottom) + 8px);
+    background: var(--surface);
+    border: 1px solid var(--accent);
+    border-radius: 12px; padding: 12px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 10px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
+  }
+  .pull-total-label {
+    font-family: var(--font-display); font-size: 12px;
+    font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .pull-total-val {
+    font-family: var(--font-display); font-size: 28px; font-weight: 800; color: var(--accent);
+  }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.8); backdrop-filter: blur(4px);
+    align-items: flex-end; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(20px + var(--safe-bottom));
+    width: 100%; max-height: 90dvh; overflow-y: auto;
+  }
+  .modal-handle {
+    width: 36px; height: 4px; background: var(--border);
+    border-radius: 2px; margin: 0 auto 20px;
+  }
+  .modal-title {
+    font-family: var(--font-display); font-size: 22px; font-weight: 800;
+    margin-bottom: 16px;
+  }
+
+  /* ── CAR PHOTO MODAL ── */
+  .car-photo-img {
+    width: 100%; border-radius: 12px;
+    margin-bottom: 14px;
+    max-height: 280px; object-fit: cover;
+  }
+  .vin-info { font-family: var(--font-mono); font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .vin-info b { color: var(--text); }
+
+  /* ── SETTINGS ── */
+  .settings-group { margin-bottom: 20px; }
+  .settings-label {
+    font-family: var(--font-display); font-size: 11px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .settings-input {
+    width: 100%; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px;
+    padding: 11px 14px; color: var(--text);
+    font-family: var(--font-mono); font-size: 12px;
+    outline: none; transition: border-color 0.15s;
+  }
+  .settings-input:focus { border-color: var(--accent); }
+  .settings-input::placeholder { color: var(--muted); }
+
+  /* ── LOG SCREEN ── */
+  .log-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+  }
+  .log-item-top {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 6px;
+  }
+  .log-part-name {
+    font-family: var(--font-display); font-size: 15px; font-weight: 700;
+  }
+  .log-price {
+    font-family: var(--font-mono); font-size: 13px; color: var(--accent); font-weight: 600;
+  }
+  .log-meta { font-size: 11px; color: var(--muted); line-height: 1.6; }
+
+  /* ── LOADING ── */
+  .loading-spinner {
+    display: inline-block; width: 18px; height: 18px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center; padding: 40px 20px; color: var(--muted);
+  }
+  .empty-state svg { width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 13px; line-height: 1.6; }
+
+  /* ── TOAST ── */
+  #toast {
+    position: fixed; bottom: calc(70px + var(--safe-bottom) + 8px); left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px;
+    font-size: 13px; font-family: var(--font-body);
+    opacity: 0; transition: all 0.25s; z-index: 300;
+    white-space: nowrap; pointer-events: none;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── COLOR SWATCH ── */
+  .color-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block; border: 1px solid rgba(255,255,255,0.2);
+    vertical-align: middle; margin-right: 4px;
+  }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto;
+    padding-bottom: 4px; scrollbar-width: none;
+  }
+  .filter-bar::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    flex-shrink: 0; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); font-size: 11px; font-family: var(--font-display);
+    font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+  }
+  .filter-chip.active {
+    background: var(--accent); border-color: var(--accent); color: #000;
+  }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="header-brand">ROW<span>25</span> YARD</div>
+  <div class="header-yard">
+    <b id="header-yard-name">Locating yard…</b>
+    <span id="header-yard-dist"></span>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- YARD SCREEN -->
+  <div id="screen-yard" class="screen active">
+    <div class="yard-card">
+      <div class="yard-card-top">
+        <div>
+          <div class="yard-name" id="yard-name">Detecting location…</div>
+          <div class="yard-meta" id="yard-meta">GPS locating…</div>
+        </div>
+        <div class="yard-dist" id="yard-dist-badge">–</div>
+      </div>
+      <button class="btn btn-sm" onclick="locateYard()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        Refresh Location
+      </button>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="stat-val" id="stat-cars">–</div>
+        <div class="stat-lbl">Cars</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val green" id="stat-parts">–</div>
+        <div class="stat-lbl">Parts</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-val" id="stat-roi">–</div>
+        <div class="stat-lbl">Est. ROI</div>
+      </div>
+    </div>
+
+    <div class="section-label">Cars At This Yard</div>
+    <div class="filter-bar">
+      <div class="filter-chip active" onclick="filterCars('all',this)">All</div>
+      <div class="filter-chip" onclick="filterCars('GO',this)">✅ Go</div>
+      <div class="filter-chip" onclick="filterCars('MAYBE',this)">⚠️ Maybe</div>
+      <div class="filter-chip" onclick="filterCars('BMW',this)">BMW</div>
+      <div class="filter-chip" onclick="filterCars('Mercedes',this)">Mercedes</div>
+    </div>
+
+    <div id="car-list">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 12h18M3 6l9-3 9 3M5 12v7a1 1 0 001 1h12a1 1 0 001-1v-7"/></svg>
+        <p>Loading cars from Google Sheet…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- PULL SCREEN -->
+  <div id="screen-pull" class="screen">
+    <div id="pull-car-header">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        <p>Select a car from the Yard tab to start pulling.</p>
+      </div>
+    </div>
+    <div id="parts-list"></div>
+    <div id="pull-total-bar" style="display:none" class="pull-total">
+      <div>
+        <div class="pull-total-label">Est. Total</div>
+        <div style="font-size:11px;color:var(--muted)" id="pull-count">0 parts pulled</div>
+      </div>
+      <div class="pull-total-val" id="pull-total-val">$0</div>
+    </div>
+  </div>
+
+  <!-- LOG SCREEN -->
+  <div id="screen-log" class="screen">
+    <div class="section-label">Today's Pulled Parts</div>
+    <div id="log-list">
+      <div class="empty-state">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 17H7A5 5 0 017 7h2M15 7h2a5 5 0 010 10h-2M11 12h2"/></svg>
+        <p>No parts pulled yet today.</p>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <button class="btn full" onclick="syncToSheet()" id="sync-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Sync Pull Log to Google Sheet
+      </button>
+    </div>
+  </div>
+
+  <!-- SETTINGS SCREEN -->
+  <div id="screen-settings" class="screen">
+    <div class="section-label">API Keys</div>
+
+    <div class="settings-group">
+      <div class="settings-label">Anthropic API Key</div>
+      <input class="settings-input" id="s-anthropic" type="password" placeholder="sk-ant-…" oninput="saveSetting('anthropic_key', this.value)">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Google Sheet ID</div>
+      <input class="settings-input" id="s-sheet-id" type="text" placeholder="1yd8JnPx…" oninput="saveSetting('sheet_id', this.value)">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Google Sheets API Key (read-only)</div>
+      <input class="settings-input" id="s-sheets-key" type="password" placeholder="AIzaSy…" oninput="saveSetting('sheets_key', this.value)">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Imgur Client ID</div>
+      <input class="settings-input" id="s-imgur" type="text" placeholder="Client-ID …" oninput="saveSetting('imgur_id', this.value)">
+    </div>
+
+    <hr class="divider">
+
+    <div class="settings-group">
+      <div class="settings-label">Google Sheet Write-back Tab</div>
+      <input class="settings-input" id="s-log-tab" type="text" placeholder="PullLog" value="PullLog" oninput="saveSetting('log_tab', this.value)">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">Create a tab named "PullLog" in your Google Sheet. Requires OAuth for write access.</div>
+    </div>
+
+    <hr class="divider">
+    <div class="section-label">App Info</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.8">
+      <b style="color:var(--text)">Row25 Yard v1.0</b><br>
+      Sheet ID: <span style="font-family:var(--font-mono)" id="info-sheet">not set</span><br>
+      GPS: <span id="info-gps">–</span><br>
+      Cars loaded: <span id="info-cars">0</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn full" onclick="loadSheet()">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        Reload Sheet Data
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav id="nav">
+  <button class="nav-btn active" onclick="showScreen('yard',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v9a1 1 0 001 1h4v-5h4v5h4a1 1 0 001-1v-9"/></svg>
+    Yard
+  </button>
+  <button class="nav-btn" onclick="showScreen('pull',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 10c-.83 0-1.5-.67-1.5-1.5v-5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5zM20.5 10H19V8.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/><path d="M9.5 14c.83 0 1.5.67 1.5 1.5v5c0 .83-.67 1.5-1.5 1.5S8 21.33 8 20.5v-5c0-.83.67-1.5 1.5-1.5zM3.5 14H5v1.5c0 .83-.67 1.5-1.5 1.5S2 16.33 2 15.5 2.67 14 3.5 14z"/><path d="M14 14.5c0-.83.67-1.5 1.5-1.5h5c.83 0 1.5.67 1.5 1.5s-.67 1.5-1.5 1.5h-5c-.83 0-1.5-.67-1.5-1.5zM14 3.5c0 .83-.67 1.5-1.5 1.5h-5C6.67 5 6 4.33 6 3.5S6.67 2 7.5 2h5c.83 0 1.5.67 1.5 1.5z"/></svg>
+    Pull
+  </button>
+  <button class="nav-btn" onclick="showScreen('log',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 17H7A5 5 0 017 7h2M15 7h2a5 5 0 010 10h-2M11 12h2"/><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><polyline points="14,2 14,8 20,8"/></svg>
+    Log
+  </button>
+  <button class="nav-btn" onclick="showScreen('settings',this)">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    Settings
+  </button>
+</nav>
+
+<!-- CAR PHOTO MODAL -->
+<div class="modal-overlay" id="modal-car-photo" onclick="closeModal('modal-car-photo')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-car-title">Car Details</div>
+    <img id="modal-car-img" class="car-photo-img" src="" alt="" style="display:none">
+    <div id="modal-car-img-placeholder" style="background:var(--surface2);border-radius:12px;height:120px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;margin-bottom:14px">No image available</div>
+    <div id="modal-car-vin-info" class="vin-info"></div>
+    <div style="margin-top:14px;display:flex;gap:8px">
+      <a id="modal-row52-link" href="#" target="_blank" class="btn btn-sm" style="flex:1;text-decoration:none;text-align:center">View on Row52</a>
+      <button class="btn btn-sm success" style="flex:1" onclick="startPullFromModal()">Pull This Car</button>
+    </div>
+  </div>
+</div>
+
+<!-- PART ASSESSMENT MODAL -->
+<div class="modal-overlay" id="modal-part" onclick="closeModal('modal-part')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-part-title">Assess Part</div>
+
+    <div class="section-label" style="margin-bottom:6px">Part Label Photo</div>
+    <div class="photo-area" id="photo-label-area" onclick="document.getElementById('photo-label-input').click()">
+      <div class="placeholder" id="photo-label-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+        Tap to photo part label / number
+      </div>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="photo-label-input" onchange="handlePhoto('label',this)">
+
+    <div class="section-label" style="margin-bottom:6px">Part Face Photo</div>
+    <div class="photo-area" id="photo-face-area" onclick="document.getElementById('photo-face-input').click()">
+      <div class="placeholder" id="photo-face-placeholder">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+        Tap to photo part face / condition
+      </div>
+    </div>
+    <input type="file" accept="image/*" capture="environment" id="photo-face-input" onchange="handlePhoto('face',this)">
+
+    <button class="btn primary full" style="margin-top:12px" id="assess-btn" onclick="assessPart()">
+      Analyze with Claude AI
+    </button>
+
+    <div id="assessment-result"></div>
+
+    <div style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:8px" id="part-action-btns" style="display:none">
+      <button class="btn success" onclick="markPartPulled()">✓ Mark Pulled</button>
+      <button class="btn danger" onclick="markPartSkipped()">✗ Skip Part</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────
+const state = {
+  cars: [],            // All cars from Sheet1
+  roiCars: [],         // ROI analyzed cars
+  filteredCars: [],
+  currentYard: null,
+  activeCar: null,
+  activePart: null,
+  activePartIndex: null,
+  parts: [],           // Parts for active car [{name, price, status, timer, photos, assessment}]
+  pullLog: [],         // Completed pulls today
+  photos: { label: null, face: null },
+  timerInterval: null,
+  currentFilter: 'all',
+  userLat: null,
+  userLng: null,
+};
+
+// ── SETTINGS ──────────────────────────────────────────────────
+function getSetting(k) { return localStorage.getItem('r25_'+k) || ''; }
+function saveSetting(k, v) { localStorage.setItem('r25_'+k, v); updateInfoPanel(); }
+
+function loadSettings() {
+  document.getElementById('s-anthropic').value = getSetting('anthropic_key');
+  document.getElementById('s-sheet-id').value = getSetting('sheet_id') || '1yd8JnPxde3MaRA3SbftTrgCkVcMF5vp9VfT63ugZo2Y';
+  document.getElementById('s-sheets-key').value = getSetting('sheets_key');
+  document.getElementById('s-imgur').value = getSetting('imgur_id');
+  document.getElementById('s-log-tab').value = getSetting('log_tab') || 'PullLog';
+  updateInfoPanel();
+}
+
+function updateInfoPanel() {
+  const sheetId = getSetting('sheet_id') || '1yd8JnPxde3MaRA3SbftTrgCkVcMF5vp9VfT63ugZo2Y';
+  document.getElementById('info-sheet').textContent = sheetId ? sheetId.slice(0,16)+'…' : 'not set';
+  document.getElementById('info-cars').textContent = state.roiCars.length;
+}
+
+// ── NAVIGATION ────────────────────────────────────────────────
+function showScreen(name, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── LOCATION & YARD DETECTION ─────────────────────────────────
+const PICK_N_PULL_YARDS = [
+  { name: 'PICK-n-PULL Fremont',     lat: 37.5380, lng: -121.9860, city: 'Fremont, CA' },
+  { name: 'PICK-n-PULL Newark',      lat: 37.5485, lng: -122.0419, city: 'Newark, CA' },
+  { name: 'PICK-n-PULL Richmond',    lat: 37.9121, lng: -122.3521, city: 'Richmond, CA' },
+  { name: 'PICK-n-PULL Oakland',     lat: 37.7510, lng: -122.2060, city: 'Oakland, CA' },
+  { name: 'PICK-n-PULL Antelope',    lat: 38.6944, lng: -121.3664, city: 'Antelope, CA' },
+  { name: 'PICK-n-PULL Modesto',     lat: 37.6615, lng: -120.9956, city: 'Modesto, CA' },
+  { name: 'PICK-n-PULL Moss Landing',lat: 36.8482, lng: -121.7863, city: 'Moss Landing, CA' },
+  { name: 'PICK-n-PULL Sacramento',  lat: 38.5577, lng: -121.4631, city: 'Sacramento, CA' },
+  { name: 'PICK-n-PULL San Jose',    lat: 37.3148, lng: -121.8519, city: 'San Jose, CA' },
+];
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function locateYard() {
+  document.getElementById('yard-name').textContent = 'Locating…';
+  document.getElementById('header-yard-name').textContent = 'Locating…';
+  if (!navigator.geolocation) {
+    setYardFallback();
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos => {
+    state.userLat = pos.coords.latitude;
+    state.userLng = pos.coords.longitude;
+    document.getElementById('info-gps').textContent = `${state.userLat.toFixed(4)}, ${state.userLng.toFixed(4)}`;
+
+    let nearest = null, minDist = Infinity;
+    for (const y of PICK_N_PULL_YARDS) {
+      const d = haversine(state.userLat, state.userLng, y.lat, y.lng);
+      if (d < minDist) { minDist = d; nearest = y; }
+    }
+    state.currentYard = nearest;
+    setYardDisplay(nearest, minDist);
+    filterCarsByYard();
+  }, () => setYardFallback());
+}
+
+function setYardDisplay(yard, dist) {
+  const d = dist ? dist.toFixed(1)+' mi away' : '';
+  document.getElementById('yard-name').textContent = yard.name;
+  document.getElementById('yard-meta').textContent = yard.city;
+  document.getElementById('yard-dist-badge').textContent = d;
+  document.getElementById('header-yard-name').textContent = yard.name.replace('PICK-n-PULL ','');
+  document.getElementById('header-yard-dist').textContent = d;
+}
+
+function setYardFallback() {
+  state.currentYard = { name: 'PICK-n-PULL (GPS unavailable)', city: '', match: '' };
+  document.getElementById('yard-name').textContent = 'GPS unavailable';
+  document.getElementById('yard-meta').textContent = 'Showing all yards';
+  document.getElementById('header-yard-name').textContent = 'All Yards';
+  filterCarsByYard();
+}
+
+// ── SHEET LOADING ─────────────────────────────────────────────
+async function loadSheet() {
+  const sheetId = getSetting('sheet_id') || '1yd8JnPxde3MaRA3SbftTrgCkVcMF5vp9VfT63ugZo2Y';
+  const apiKey  = getSetting('sheets_key');
+
+  document.getElementById('car-list').innerHTML = `<div class="empty-state"><div class="loading-spinner"></div><p style="margin-top:12px">Loading from Google Sheet…</p></div>`;
+
+  if (!apiKey) {
+    toast('Add your Google Sheets API key in Settings');
+    loadDemoData();
+    return;
+  }
+
+  try {
+    // Load ROI tab
+    const roiUrl = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/ROI!A:P?key=${apiKey}`;
+    const roiRes = await fetch(roiUrl);
+    const roiJson = await roiRes.json();
+
+    // Load Sheet1 for image URLs
+    const s1Url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:O?key=${apiKey}`;
+    const s1Res = await fetch(s1Url);
+    const s1Json = await s1Res.json();
+
+    parseROI(roiJson.values || []);
+    parseSheet1(s1Json.values || []);
+    filterCarsByYard();
+    updateInfoPanel();
+    toast('Sheet loaded — '+state.roiCars.length+' cars');
+  } catch(e) {
+    toast('Sheet load failed: ' + e.message);
+    loadDemoData();
+  }
+}
+
+function parseROI(rows) {
+  // Row 0 = title, Row 1 = headers, Row 2+ = data
+  if (rows.length < 3) return;
+  state.roiCars = [];
+  for (let i = 2; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[1] || r[0] === 'TOTALS') continue;
+    state.roiCars.push({
+      date:        r[0] || '',
+      vin:         r[1] || '',
+      vehicle:     r[2] || '',
+      platform:    r[3] || '',
+      yard:        r[4] || '',
+      city:        r[5] || '',
+      row:         r[6] || '?',
+      estGross:    parseFloat(r[7]) || 0,
+      pnpCost:     parseFloat(r[8]) || 0,
+      tripCost:    parseFloat(r[9]) || 0,
+      netROI:      parseFloat(r[11]) || 0,
+      goodParts:   r[12] || '',
+      damagedParts:r[13] || '',
+      verdict:     r[14] || '',
+      notes:       r[15] || '',
+      imgUrl:      null,
+      listingUrl:  null,
+    });
+  }
+}
+
+function parseSheet1(rows) {
+  // Build VIN→image/listing map
+  if (!rows.length) return;
+  const vinMap = {};
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const vin = r[1];
+    if (!vin) continue;
+    // Image col is index 2 — stored as =IMAGE("url") formula, API returns formula text
+    let imgUrl = null;
+    const imgCell = r[2] || '';
+    const match = imgCell.match(/IMAGE\("([^"]+)"\)/i);
+    if (match) imgUrl = match[1];
+    vinMap[vin] = { imgUrl, listingUrl: r[3] || null };
+  }
+  // Merge into roiCars
+  for (const car of state.roiCars) {
+    if (vinMap[car.vin]) {
+      car.imgUrl = vinMap[car.vin].imgUrl;
+      car.listingUrl = vinMap[car.vin].listingUrl;
+    }
+  }
+}
+
+function loadDemoData() {
+  state.roiCars = [
+    { vin:'WDDGF4HB7EA931872', vehicle:'C250 Luxury Sedan', platform:'W204 C-Class', yard:'PICK-n-PULL Modesto', city:'Modesto, California', row:43, estGross:681, pnpCost:208.93, netROI:205.33, goodParts:'Instrument Cluster ~$171 | Sunroof Motor ~$280 | Rain/Light Sensor ~$20 | AMG Styling Parts ~$115 | HomeLink Mirror ~$95', damagedParts:'—', verdict:'⚠️ MAYBE', notes:'W204 C-Class | 5 good parts | 110 min pull', imgUrl:'https://cdn.row52.com/images/96d494b5-99d3-4e67-a969-9517e67212be.JPG', listingUrl:'https://www.row52.com/Vehicle/Index/WDDGF4HB7EA931872' },
+    { vin:'WDDGF4HB0CA674485', vehicle:'C250 Sport Sedan', platform:'W204 C-Class', yard:'PICK-n-PULL Richmond', city:'Richmond, California', row:2, estGross:873, pnpCost:0, netROI:0, goodParts:'ECU ~$220 | Headlight Assembly ~$180 | Sunroof Motor ~$280 | Steering Column ~$95', damagedParts:'—', verdict:'✅ GO', notes:'W204 C-Class', imgUrl:'https://cdn.row52.com/images/0e7263bd-1cd8-4718-8447-1aa7fc53eff9.JPG', listingUrl:'https://www.row52.com/Vehicle/Index/WDDGF4HB0CA674485' },
+    { vin:'WBAVB73507PA85875', vehicle:'335i Sedan', platform:'BMW E90', yard:'PICK-n-PULL Newark', city:'Newark, California', row:170, estGross:0, pnpCost:0, netROI:0, goodParts:'N54 Engine Parts | Turbo | Fuel Injectors ~$40ea', damagedParts:'—', verdict:'⚠️ MAYBE', notes:'BMW 3-Series', imgUrl:null, listingUrl:'https://www.row52.com/Vehicle/Index/WBAVB73507PA85875' },
+  ];
+  filterCarsByYard();
+  updateInfoPanel();
+  toast('Demo data loaded — add API keys in Settings');
+}
+
+// ── CAR FILTERING & RENDERING ─────────────────────────────────
+function filterCarsByYard() {
+  const yard = state.currentYard;
+  if (!yard || yard.name.includes('unavailable')) {
+    state.filteredCars = [...state.roiCars];
+  } else {
+    // Match yard name loosely
+    const yardKey = yard.name.replace('PICK-n-PULL ','').toLowerCase();
+    state.filteredCars = state.roiCars.filter(c =>
+      c.yard.toLowerCase().includes(yardKey)
+    );
+  }
+  applyFilter(state.currentFilter);
+}
+
+function filterCars(type, chip) {
+  document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+  chip.classList.add('active');
+  state.currentFilter = type;
+  applyFilter(type);
+}
+
+function applyFilter(type) {
+  let cars = [...state.filteredCars];
+  if (type === 'GO') cars = cars.filter(c => c.verdict.includes('GO'));
+  else if (type === 'MAYBE') cars = cars.filter(c => c.verdict.includes('MAYBE'));
+  else if (type === 'BMW') cars = cars.filter(c => c.platform.toLowerCase().includes('bmw') || c.vehicle.toLowerCase().includes('bmw') || c.vin.startsWith('WBA'));
+  else if (type === 'Mercedes') cars = cars.filter(c => c.vin.startsWith('WD') || c.platform.toLowerCase().includes('w2') || c.vehicle.toLowerCase().includes('class'));
+
+  renderCarList(cars);
+  updateStats(state.filteredCars);
+}
+
+const COLOR_MAP = {
+  'grey':    '#9ca3af', 'silver': '#c0c0c0', 'white':  '#f5f5f5',
+  'black':   '#1a1a1a', 'blue':   '#3b82f6', 'red':    '#ef4444',
+  'green':   '#22c55e', 'gold':   '#d4a017', 'brown':  '#92400e',
+  'beige':   '#d4c5a9', 'yellow': '#eab308', 'orange': '#f97316',
+};
+function colorSwatch(colorStr) {
+  if (!colorStr) return '#888';
+  const c = colorStr.toLowerCase();
+  for (const [k,v] of Object.entries(COLOR_MAP)) if (c.includes(k)) return v;
+  return '#888';
+}
+
+function verdictClass(verdict) {
+  if (!verdict) return '';
+  if (verdict.includes('GO')) return 'verdict-good';
+  if (verdict.includes('MAYBE')) return 'verdict-maybe';
+  return 'verdict-skip';
+}
+function roiClass(roi) {
+  if (roi > 300) return 'good';
+  if (roi > 0) return 'maybe';
+  return 'bad';
+}
+
+function parsePartsFromString(str) {
+  if (!str || str === '—') return [];
+  return str.split('|').map(p => {
+    p = p.trim();
+    const priceMatch = p.match(/~?\$(\d+)/);
+    const price = priceMatch ? parseInt(priceMatch[1]) : 0;
+    const name = p.replace(/~?\$\d+/, '').replace(/\|/g,'').trim();
+    return { name, price, rawStr: p };
+  }).filter(p => p.name);
+}
+
+function renderCarList(cars) {
+  const el = document.getElementById('car-list');
+  if (!cars.length) {
+    el.innerHTML = `<div class="empty-state"><p>No cars at this yard match the current filter.</p></div>`;
+    return;
+  }
+  el.innerHTML = cars.map((car, idx) => {
+    const parts = parsePartsFromString(car.goodParts);
+    const color = colorSwatch(car.vehicle + ' ' + (car.notes || ''));
+    const vClass = verdictClass(car.verdict);
+    const partTags = parts.slice(0,4).map(p =>
+      `<span class="part-tag">${p.name}</span>`
+    ).join('') + (parts.length > 4 ? `<span class="part-tag">+${parts.length-4} more</span>` : '');
+
+    return `
+    <div class="car-card" id="car-${idx}">
+      <div class="car-card-header">
+        <div class="car-color-bar" style="background:${color}"></div>
+        <div class="car-card-main">
+          <div class="car-row-badge">Row ${car.row} · ${car.city.split(',')[0]}</div>
+          <div class="car-title">${car.vehicle}</div>
+          <div class="car-platform">${car.platform} · ${car.vin.slice(-6)}</div>
+        </div>
+        <div class="car-card-actions">
+          <div class="btn-icon ${car.imgUrl ? 'accent' : ''}" onclick="showCarPhoto(${idx})" title="View car photo">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21,15 16,10 5,21"/></svg>
+          </div>
+          <div class="btn-icon accent" onclick="startPull(${idx})" title="Start pulling">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+        </div>
+      </div>
+      ${parts.length ? `<div class="car-parts-preview">${partTags}</div>` : ''}
+      <div class="car-roi">
+        <span class="roi-val ${roiClass(car.netROI)}">$${car.netROI > 0 ? car.netROI.toFixed(0) : '—'}</span>
+        <span style="color:var(--muted);font-size:11px">est. net</span>
+        <span class="roi-verdict ${vClass}">${car.verdict.replace('⚠️','').replace('✅','').trim()}</span>
+        ${car.estGross ? `<span style="color:var(--muted);font-size:11px;margin-left:auto">$${car.estGross} gross</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateStats(cars) {
+  const totalParts = cars.reduce((s,c) => s + parsePartsFromString(c.goodParts).length, 0);
+  const totalROI = cars.reduce((s,c) => s + (c.netROI || 0), 0);
+  document.getElementById('stat-cars').textContent = cars.length;
+  document.getElementById('stat-parts').textContent = totalParts;
+  document.getElementById('stat-roi').textContent = '$'+Math.round(totalROI);
+}
+
+// ── CAR PHOTO MODAL ────────────────────────────────────────────
+let modalCarIndex = null;
+function showCarPhoto(idx) {
+  modalCarIndex = idx;
+  const car = state.filteredCars[idx] || state.roiCars[idx];
+  if (!car) return;
+
+  document.getElementById('modal-car-title').textContent = car.vehicle;
+  const img = document.getElementById('modal-car-img');
+  const placeholder = document.getElementById('modal-car-img-placeholder');
+
+  if (car.imgUrl) {
+    img.src = car.imgUrl;
+    img.style.display = 'block';
+    placeholder.style.display = 'none';
+  } else {
+    img.style.display = 'none';
+    placeholder.style.display = 'flex';
+  }
+
+  // VIN info
+  let info = `<b>VIN:</b> ${car.vin}<br>
+    <b>Platform:</b> ${car.platform}<br>
+    <b>Yard:</b> ${car.yard}<br>
+    <b>Row:</b> ${car.row}<br>
+    <b>Est. Gross:</b> $${car.estGross}<br>
+    <b>Net ROI:</b> $${car.netROI}<br>
+    <b>Verdict:</b> ${car.verdict}`;
+  if (car.notes) info += `<br><b>Notes:</b> ${car.notes}`;
+  document.getElementById('modal-car-vin-info').innerHTML = info;
+
+  const link = document.getElementById('modal-row52-link');
+  if (car.listingUrl) { link.href = car.listingUrl; link.style.display = ''; }
+  else link.style.display = 'none';
+
+  openModal('modal-car-photo');
+}
+
+function startPullFromModal() {
+  if (modalCarIndex !== null) startPull(modalCarIndex);
+  closeModal('modal-car-photo');
+}
+
+// ── PULL WORKFLOW ─────────────────────────────────────────────
+function startPull(idx) {
+  const car = state.filteredCars[idx] || state.roiCars[idx];
+  if (!car) return;
+  state.activeCar = car;
+  state.parts = parsePartsFromString(car.goodParts).map(p => ({
+    ...p,
+    status: 'pending', // pending | active | done | skipped
+    timerStart: null,
+    timerEnd: null,
+    timerSeconds: 0,
+    photos: { label: null, face: null },
+    assessment: null,
+    pullPrice: p.price,
+  }));
+
+  renderPullScreen();
+  // Switch to pull tab
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.nav-btn')[1].classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-pull').classList.add('active');
+  toast('Pull started: ' + car.vehicle);
+}
+
+function renderPullScreen() {
+  const car = state.activeCar;
+  if (!car) return;
+
+  document.getElementById('pull-car-header').innerHTML = `
+    <div class="pull-header">
+      <div class="pull-car-name">${car.vehicle}</div>
+      <div class="pull-car-meta">Row ${car.row} · ${car.yard.replace('PICK-n-PULL ','PnP ')} · ${car.vin.slice(-6)}</div>
+    </div>`;
+
+  renderPartsList();
+}
+
+function renderPartsList() {
+  const el = document.getElementById('parts-list');
+  if (!state.parts.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = state.parts.map((p, i) => {
+    const timerStr = p.timerSeconds > 0 ? formatTime(p.timerSeconds) : '';
+    return `
+    <div class="part-item ${p.status === 'active' ? 'active' : ''} ${p.status === 'done' ? 'done' : ''} ${p.status === 'skipped' ? 'skipped' : ''}" id="part-item-${i}">
+      <div class="part-item-header" onclick="togglePart(${i})">
+        <div class="part-status-dot ${p.status === 'active' ? 'active' : p.status}"></div>
+        <div class="part-name">${p.name}</div>
+        ${timerStr ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${timerStr}</div>` : ''}
+        <div class="part-price">${p.price ? '~$'+p.price : ''}</div>
+      </div>
+      <div class="part-body ${p.status === 'active' ? 'open' : ''}" id="part-body-${i}">
+        <div style="padding-top:12px">
+          <div id="timer-display-${i}" class="timer-display ${p.status === 'active' ? 'running' : (p.status === 'done' ? 'done' : '')}">
+            ${formatTime(p.timerSeconds)}
+          </div>
+          <div class="timer-btns">
+            <button class="btn btn-sm" onclick="timerStart(${i})" id="tbtn-start-${i}" ${p.timerStart && !p.timerEnd ? 'disabled' : ''}>
+              ▶ Start
+            </button>
+            <button class="btn btn-sm" onclick="timerPause(${i})" id="tbtn-pause-${i}">
+              ⏸ Pause
+            </button>
+            <button class="btn btn-sm" onclick="openPartModal(${i})" id="tbtn-photo-${i}">
+              📷 Photo
+            </button>
+          </div>
+          ${p.assessment ? renderInlineAssessment(p.assessment) : ''}
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <button class="btn success btn-sm" onclick="markPartDone(${i})">✓ Pulled</button>
+            <button class="btn danger btn-sm" onclick="markPartSkippedDirect(${i})">✗ Skip</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  updatePullTotal();
+}
+
+function togglePart(i) {
+  const body = document.getElementById('part-body-'+i);
+  const isOpen = body.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.part-body').forEach(b => b.classList.remove('open'));
+  if (!isOpen) body.classList.add('open');
+}
+
+function renderInlineAssessment(a) {
+  return `<div class="assessment ${a.type}">
+    <div class="assessment-verdict">${a.type.toUpperCase()} — ${a.verdict}</div>
+    <div style="font-size:12px;line-height:1.5">${a.notes}</div>
+  </div>`;
+}
+
+// ── TIMERS ────────────────────────────────────────────────────
+function formatTime(secs) {
+  const m = Math.floor(secs/60).toString().padStart(2,'0');
+  const s = (secs%60).toString().padStart(2,'0');
+  return `${m}:${s}`;
+}
+
+const partTimers = {};
+
+function timerStart(i) {
+  const p = state.parts[i];
+  if (partTimers[i]) return; // already running
+  p.status = 'active';
+  p.timerStart = p.timerStart || Date.now();
+  const startTime = Date.now() - (p.timerSeconds * 1000);
+
+  partTimers[i] = setInterval(() => {
+    p.timerSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const display = document.getElementById('timer-display-'+i);
+    if (display) {
+      display.textContent = formatTime(p.timerSeconds);
+      display.className = 'timer-display running';
+    }
+  }, 1000);
+
+  // Update part status dot
+  const item = document.getElementById('part-item-'+i);
+  if (item) {
+    item.querySelector('.part-status-dot').className = 'part-status-dot active';
+    item.classList.add('active');
+  }
+  // Open body
+  document.getElementById('part-body-'+i).classList.add('open');
+}
+
+function timerPause(i) {
+  if (partTimers[i]) {
+    clearInterval(partTimers[i]);
+    delete partTimers[i];
+  }
+}
+
+function timerStop(i) {
+  timerPause(i);
+  const p = state.parts[i];
+  p.timerEnd = Date.now();
+}
+
+function markPartDone(i) {
+  timerStop(i);
+  const p = state.parts[i];
+  p.status = 'done';
+  // Log it
+  state.pullLog.push({
+    timestamp: new Date().toISOString(),
+    car: state.activeCar.vehicle,
+    vin: state.activeCar.vin,
+    yard: state.activeCar.yard,
+    row: state.activeCar.row,
+    part: p.name,
+    price: p.pullPrice || p.price,
+    timerSeconds: p.timerSeconds,
+    assessment: p.assessment ? p.assessment.type : 'unassessed',
+    photos: p.photos,
+  });
+  renderPartsList();
+  renderLogScreen();
+  toast('✓ ' + p.name + ' logged');
+}
+
+function markPartSkippedDirect(i) {
+  timerStop(i);
+  state.parts[i].status = 'skipped';
+  renderPartsList();
+  toast('Skipped: ' + state.parts[i].name);
+}
+
+function updatePullTotal() {
+  const pulled = state.parts.filter(p => p.status === 'done');
+  const total = pulled.reduce((s, p) => s + (p.pullPrice || p.price || 0), 0);
+  const bar = document.getElementById('pull-total-bar');
+  bar.style.display = pulled.length ? 'flex' : 'none';
+  document.getElementById('pull-total-val').textContent = '$'+total;
+  document.getElementById('pull-count').textContent = pulled.length + ' part'+(pulled.length!==1?'s':'')+' pulled';
+}
+
+// ── PART PHOTO & ASSESSMENT MODAL ────────────────────────────
+let modalPartIndex = null;
+
+function openPartModal(i) {
+  modalPartIndex = i;
+  const p = state.parts[i];
+  timerStart(i); // auto-start timer when opening part
+
+  document.getElementById('modal-part-title').textContent = p.name;
+  document.getElementById('assessment-result').innerHTML = '';
+  document.getElementById('part-action-btns').style.display = 'none';
+
+  // Reset photo areas
+  resetPhotoArea('label');
+  resetPhotoArea('face');
+  state.photos = { label: p.photos?.label || null, face: p.photos?.face || null };
+
+  if (p.photos?.label) showPhotoPreview('label', p.photos.label);
+  if (p.photos?.face) showPhotoPreview('face', p.photos.face);
+  if (p.assessment) {
+    document.getElementById('assessment-result').innerHTML = renderInlineAssessment(p.assessment);
+    document.getElementById('part-action-btns').style.display = 'grid';
+  }
+
+  openModal('modal-part');
+}
+
+function resetPhotoArea(type) {
+  const area = document.getElementById('photo-'+type+'-area');
+  const placeholder = document.getElementById('photo-'+type+'-placeholder');
+  const existingImg = area.querySelector('img');
+  if (existingImg) existingImg.remove();
+  placeholder.style.display = 'block';
+}
+
+function showPhotoPreview(type, dataUrl) {
+  const area = document.getElementById('photo-'+type+'-area');
+  const placeholder = document.getElementById('photo-'+type+'-placeholder');
+  placeholder.style.display = 'none';
+  const existing = area.querySelector('img');
+  if (existing) existing.remove();
+  const img = document.createElement('img');
+  img.src = dataUrl;
+  area.appendChild(img);
+}
+
+function handlePhoto(type, input) {
+  if (!input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.photos[type] = e.target.result;
+    showPhotoPreview(type, e.target.result);
+    // Save to part
+    if (modalPartIndex !== null) {
+      if (!state.parts[modalPartIndex].photos) state.parts[modalPartIndex].photos = {};
+      state.parts[modalPartIndex].photos[type] = e.target.result;
+    }
+  };
+  reader.readAsDataURL(input.files[0]);
+}
+
+async function assessPart() {
+  const apiKey = getSetting('anthropic_key');
+  if (!apiKey) { toast('Add Anthropic API key in Settings'); return; }
+  if (!state.photos.label && !state.photos.face) { toast('Take at least one photo first'); return; }
+
+  const btn = document.getElementById('assess-btn');
+  btn.innerHTML = '<div class="loading-spinner"></div> Analyzing…';
+  btn.disabled = true;
+
+  const p = state.parts[modalPartIndex];
+  const content = [];
+
+  if (state.photos.label) {
+    const b64 = state.photos.label.split(',')[1];
+    const mt = state.photos.label.split(';')[0].split(':')[1];
+    content.push({ type:'image', source:{ type:'base64', media_type:mt, data:b64 } });
+  }
+  if (state.photos.face) {
+    const b64 = state.photos.face.split(',')[1];
+    const mt = state.photos.face.split(';')[0].split(':')[1];
+    content.push({ type:'image', source:{ type:'base64', media_type:mt, data:b64 } });
+  }
+
+  content.push({ type:'text', text:
+    `You are an expert salvage yard parts inspector. Assess this ${p.name} from a ${state.activeCar?.vehicle || 'German car'} (${state.activeCar?.platform || ''}).
+
+Respond in JSON only:
+{
+  "verdict": "BUY | BENCH TEST | SKIP",
+  "condition": "brief condition description",
+  "partNumber": "part number if visible",
+  "notes": "key observations (2-3 sentences)",
+  "priceAdjustment": "FULL | REDUCED | SKIP"
+}
+
+Rules: BUY = clean, looks fully functional. BENCH TEST = works but needs verification, worth pulling. SKIP = clearly damaged/missing/wrong part.` });
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01' },
+      body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:400, messages:[{role:'user', content}] })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    let text = data.content?.[0]?.text || '{}';
+    text = text.replace(/```json|```/g,'').trim();
+    const result = JSON.parse(text);
+
+    const typeMap = { 'BUY':'buy', 'BENCH TEST':'bench', 'SKIP':'skip' };
+    const assessment = {
+      type: typeMap[result.verdict] || 'bench',
+      verdict: result.verdict,
+      condition: result.condition,
+      partNumber: result.partNumber,
+      notes: result.notes,
+    };
+
+    state.parts[modalPartIndex].assessment = assessment;
+
+    // Auto-stop timer when photo analyzed
+    timerStop(modalPartIndex);
+
+    document.getElementById('assessment-result').innerHTML = renderInlineAssessment(assessment);
+    document.getElementById('part-action-btns').style.display = 'grid';
+    renderPartsList();
+
+  } catch(e) {
+    document.getElementById('assessment-result').innerHTML =
+      `<div class="assessment bench"><div class="assessment-verdict">ERROR</div><div style="font-size:12px">${e.message}</div></div>`;
+  }
+
+  btn.innerHTML = 'Analyze with Claude AI';
+  btn.disabled = false;
+}
+
+function markPartPulled() {
+  if (modalPartIndex !== null) {
+    markPartDone(modalPartIndex);
+    closeModal('modal-part');
+  }
+}
+
+function markPartSkipped() {
+  if (modalPartIndex !== null) {
+    markPartSkippedDirect(modalPartIndex);
+    closeModal('modal-part');
+  }
+}
+
+// ── LOG SCREEN ────────────────────────────────────────────────
+function renderLogScreen() {
+  const el = document.getElementById('log-list');
+  if (!state.pullLog.length) {
+    el.innerHTML = `<div class="empty-state"><p>No parts pulled yet today.</p></div>`;
+    return;
+  }
+  const total = state.pullLog.reduce((s,p) => s + (p.price||0), 0);
+  el.innerHTML = state.pullLog.map((p,i) => `
+    <div class="log-item">
+      <div class="log-item-top">
+        <div class="log-part-name">${p.part}</div>
+        <div class="log-price">$${p.price||'?'}</div>
+      </div>
+      <div class="log-meta">
+        ${p.car} · Row ${p.row}<br>
+        Pull time: ${formatTime(p.timerSeconds)} · ${p.assessment}<br>
+        <span style="color:var(--muted)">${new Date(p.timestamp).toLocaleTimeString()}</span>
+      </div>
+    </div>
+  `).join('') + `
+    <div style="text-align:right;padding:8px 4px;font-family:var(--font-display);font-size:16px;font-weight:700;color:var(--accent)">
+      Total: $${total}
+    </div>`;
+}
+
+// ── SHEET WRITE-BACK ──────────────────────────────────────────
+async function syncToSheet() {
+  if (!state.pullLog.length) { toast('Nothing to sync yet'); return; }
+  const apiKey = getSetting('sheets_key');
+  const sheetId = getSetting('sheet_id') || '1yd8JnPxde3MaRA3SbftTrgCkVcMF5vp9VfT63ugZo2Y';
+  const tab = getSetting('log_tab') || 'PullLog';
+
+  if (!apiKey) { toast('Sheets API key needed — but write requires OAuth'); return; }
+
+  // Note: Google Sheets API v4 write requires OAuth, not just API key.
+  // We'll build the data and show instructions.
+  const rows = state.pullLog.map(p => [
+    new Date(p.timestamp).toLocaleDateString(),
+    new Date(p.timestamp).toLocaleTimeString(),
+    p.car, p.vin, p.yard, p.row, p.part,
+    p.price, formatTime(p.timerSeconds), p.assessment
+  ]);
+
+  // Try OAuth write
+  toast('Write-back requires OAuth. Copying data to clipboard…');
+  const csv = [
+    ['Date','Time','Car','VIN','Yard','Row','Part','Price','PullTime','Assessment'],
+    ...rows
+  ].map(r => r.join('\t')).join('\n');
+
+  try {
+    await navigator.clipboard.writeText(csv);
+    toast('Copied! Paste into your PullLog tab.');
+  } catch(e) {
+    toast('Paste this into Google Sheets PullLog tab');
+    console.log(csv);
+  }
+}
+
+// ── MODALS ────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── PWA MANIFEST ─────────────────────────────────────────────
+function injectManifest() {
+  const manifest = {
+    name: 'Row25 Yard',
+    short_name: 'R25 Yard',
+    description: 'Junkyard parts assistant for Pick-n-Pull yards',
+    start_url: '.',
+    display: 'standalone',
+    background_color: '#0a0a0a',
+    theme_color: '#f5a623',
+    orientation: 'portrait',
+    icons: [
+      { src: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="%230a0a0a"/><text x="20" y="130" font-family="monospace" font-weight="bold" font-size="90" fill="%23f5a623">R25</text></svg>', sizes: '192x192', type: 'image/svg+xml' }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(manifest)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  document.getElementById('manifest-link').href = url;
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  loadSettings();
+  injectManifest();
+  locateYard();
+  renderLogScreen();
+
+  // Auto-load if keys are present
+  if (getSetting('sheets_key')) {
+    await loadSheet();
+  } else {
+    loadDemoData();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
