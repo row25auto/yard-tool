@@ -32,7 +32,7 @@
     --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
   body {
     font-family: var(--font-body);
@@ -196,6 +196,7 @@
     background: var(--surface2);
     display: flex; align-items: center; justify-content: center;
     cursor: pointer; transition: all 0.15s;
+    -webkit-user-select: none; user-select: none;
   }
   .btn-icon:active { transform: scale(0.93); background: var(--border); }
   .btn-icon svg { width: 16px; height: 16px; color: var(--muted); }
@@ -505,6 +506,27 @@
   }
 
   .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── YARD SELECTOR ── */
+  .yard-select-item {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+    cursor: pointer; transition: border-color 0.15s;
+  }
+  .yard-select-item.active { border-color: var(--accent); background: rgba(245,166,35,0.07); }
+  .yard-select-item:active { opacity: 0.8; }
+  .yard-select-name {
+    font-family: var(--font-display); font-size: 16px; font-weight: 700;
+    color: var(--text); margin-bottom: 2px;
+  }
+  .yard-select-item.active .yard-select-name { color: var(--accent); }
+  .yard-select-addr { font-size: 11px; color: var(--muted); }
+  .yard-select-phone { font-size: 11px; color: var(--muted); font-family: var(--font-mono); margin-top:2px; }
+  .yard-select-miles {
+    font-family: var(--font-display); font-size: 18px; font-weight: 800;
+    color: var(--muted); white-space: nowrap; padding-left: 10px; padding-top: 2px;
+  }
+  .yard-select-item.active .yard-select-miles { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -527,14 +549,21 @@
       <div class="yard-card-top">
         <div>
           <div class="yard-name" id="yard-name">Detecting location…</div>
-          <div class="yard-meta" id="yard-meta">GPS locating…</div>
+          <div class="yard-meta" id="yard-meta" style="margin-bottom:2px"></div>
+          <div style="font-size:12px;color:var(--accent);font-family:var(--font-mono)" id="yard-phone"></div>
         </div>
         <div class="yard-dist" id="yard-dist-badge">–</div>
       </div>
-      <button class="btn btn-sm" onclick="locateYard()">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
-        Refresh Location
-      </button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" style="flex:1" onclick="locateYard()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          GPS
+        </button>
+        <button class="btn btn-sm primary" style="flex:2" onclick="openYardSelector()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px"><path d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Change Yard
+        </button>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -727,16 +756,26 @@
   </div>
 </div>
 
+<!-- YARD SELECTOR MODAL -->
+<div class="modal-overlay" id="modal-yard-select" onclick="closeModal('modal-yard-select')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-height:85dvh">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Select Yard</div>
+    <div id="yard-select-list"></div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div id="toast"></div>
 
 <script>
 // ── STATE ──────────────────────────────────────────────────────
 const state = {
-  cars: [],            // All cars from Sheet1
-  roiCars: [],         // ROI analyzed cars
+  cars: [],
+  roiCars: [],
   filteredCars: [],
   currentYard: null,
+  manualYard: null,
   activeCar: null,
   activePart: null,
   activePartIndex: null,
@@ -778,16 +817,25 @@ function showScreen(name, btn) {
 
 // ── LOCATION & YARD DETECTION ─────────────────────────────────
 const PICK_N_PULL_YARDS = [
-  { name: 'PICK-n-PULL Fremont',     lat: 37.5380, lng: -121.9860, city: 'Fremont, CA' },
-  { name: 'PICK-n-PULL Newark',      lat: 37.5485, lng: -122.0419, city: 'Newark, CA' },
-  { name: 'PICK-n-PULL Richmond',    lat: 37.9121, lng: -122.3521, city: 'Richmond, CA' },
-  { name: 'PICK-n-PULL Oakland',     lat: 37.7510, lng: -122.2060, city: 'Oakland, CA' },
-  { name: 'PICK-n-PULL Antelope',    lat: 38.6944, lng: -121.3664, city: 'Antelope, CA' },
-  { name: 'PICK-n-PULL Modesto',     lat: 37.6615, lng: -120.9956, city: 'Modesto, CA' },
-  { name: 'PICK-n-PULL Moss Landing',lat: 36.8482, lng: -121.7863, city: 'Moss Landing, CA' },
-  { name: 'PICK-n-PULL Sacramento',  lat: 38.5577, lng: -121.4631, city: 'Sacramento, CA' },
-  { name: 'PICK-n-PULL San Jose',    lat: 37.3148, lng: -121.8519, city: 'San Jose, CA' },
+  { name: 'PICK-n-PULL Newark',           short: 'Newark',          lat: 37.5353, lng: -122.0472, city: 'Newark, CA',          addr: '7400 Mowry Avenue',            phone: '510-742-2277', miles: 3  },
+  { name: 'PICK-n-PULL San Jose North',   short: 'San Jose North',  lat: 37.3496, lng: -121.9018, city: 'San Jose, CA',         addr: '1065 Commercial Street',       phone: '408-452-1282', miles: 15 },
+  { name: 'PICK-n-PULL Oakland',          short: 'Oakland',         lat: 37.7246, lng: -122.1676, city: 'Oakland, CA',          addr: '8451 San Leandro Street',      phone: '510-729-7010', miles: 16 },
+  { name: 'PICK-n-PULL Richmond',         short: 'Richmond',        lat: 37.9369, lng: -122.3671, city: 'Richmond, CA',         addr: '1015 Market Avenue',           phone: '510-233-7341', miles: 33 },
+  { name: 'PICK-n-PULL Fairfield',        short: 'Fairfield',       lat: 38.2774, lng: -122.0208, city: 'Fairfield, CA',        addr: '4659 Air Base Parkway',        phone: '707-425-1044', miles: 48 },
+  { name: 'PICK-n-PULL Stockton',         short: 'Stockton',        lat: 37.9625, lng: -121.2233, city: 'Stockton, CA',         addr: '3927 Clark Drive',             phone: '209-462-1927', miles: 49 },
+  { name: 'PICK-n-PULL Moss Landing',     short: 'Moss Landing',    lat: 36.8482, lng: -121.7863, city: 'Moss Landing, CA',     addr: '516B Dolan Road',              phone: '831-632-4201', miles: 54 },
+  { name: 'PICK-n-PULL Modesto',          short: 'Modesto',         lat: 37.6444, lng: -120.9962, city: 'Modesto, CA',          addr: '113 Beard Avenue',             phone: '209-579-2277', miles: 58 },
+  { name: 'PICK-n-PULL Salinas',          short: 'Salinas',         lat: 36.6243, lng: -121.6603, city: 'Salinas, CA',          addr: '20856 Spence Road',            phone: '831-422-1088', miles: 69 },
+  { name: 'PICK-n-PULL Sacramento Mather',short: 'Sac Mather',      lat: 38.5628, lng: -121.3274, city: 'Sacramento, CA',       addr: '4075 Happy Lane',              phone: '916-503-9473', miles: 77 },
+  { name: 'PICK-n-PULL Rancho Cordova',   short: 'Rancho Cordova',  lat: 38.5891, lng: -121.2932, city: 'Rancho Cordova, CA',   addr: '3419 Sunrise Blvd',            phone: '916-635-2027', miles: 80 },
+  { name: 'PICK-n-PULL Windsor',          short: 'Windsor',         lat: 38.5449, lng: -122.8141, city: 'Windsor, CA',          addr: '10475 Old Redwood Highway',    phone: '707-838-4691', miles: 82 },
+  { name: 'PICK-n-PULL Merced',           short: 'Merced',          lat: 37.2969, lng: -120.4530, city: 'Merced, CA',           addr: '1150 E Childs Avenue',         phone: '209-722-3376', miles: 86 },
+  { name: 'PICK-n-PULL Antelope',         short: 'Antelope',        lat: 38.6944, lng: -121.3664, city: 'Antelope, CA',         addr: '8640 Antelope North Road',     phone: '916-721-4040', miles: 87 },
+  { name: 'PICK-n-PULL Rocklin',          short: 'Rocklin',         lat: 38.7907, lng: -121.2358, city: 'Rocklin, CA',          addr: '6355 Pacific Street',          phone: '916-784-6350', miles: 92 },
 ];
+
+// Home base ZIP 94536 (Fremont) coords
+const HOME_LAT = 37.5485, HOME_LNG = -122.0419;
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 3958.8;
@@ -798,17 +846,19 @@ function haversine(lat1, lon1, lat2, lon2) {
 }
 
 function locateYard() {
-  document.getElementById('yard-name').textContent = 'Locating…';
-  document.getElementById('header-yard-name').textContent = 'Locating…';
-  if (!navigator.geolocation) {
-    setYardFallback();
+  // If user has manually selected a yard, keep it
+  if (state.manualYard) {
+    setYardDisplay(state.manualYard, state.manualYard.miles);
+    filterCarsByYard();
     return;
   }
+  document.getElementById('yard-name').textContent = 'Locating…';
+  document.getElementById('header-yard-name').textContent = 'Locating…';
+  if (!navigator.geolocation) { setYardFallback(); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     state.userLat = pos.coords.latitude;
     state.userLng = pos.coords.longitude;
     document.getElementById('info-gps').textContent = `${state.userLat.toFixed(4)}, ${state.userLng.toFixed(4)}`;
-
     let nearest = null, minDist = Infinity;
     for (const y of PICK_N_PULL_YARDS) {
       const d = haversine(state.userLat, state.userLng, y.lat, y.lng);
@@ -820,20 +870,62 @@ function locateYard() {
   }, () => setYardFallback());
 }
 
+function useGPS() {
+  state.manualYard = null;
+  locateYard();
+}
+
+function selectYard(idx) {
+  const yard = PICK_N_PULL_YARDS[idx];
+  state.manualYard = yard;
+  state.currentYard = yard;
+  closeModal('modal-yard-select');
+  setYardDisplay(yard, yard.miles);
+  filterCarsByYard();
+  toast('Yard set: ' + yard.short);
+}
+
+function openYardSelector() {
+  // Build yard list in modal
+  const list = document.getElementById('yard-select-list');
+  list.innerHTML = `
+    <button class="btn full" style="margin-bottom:12px" onclick="useGPS()">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      Use GPS (auto-detect nearest)
+    </button>
+    <div class="section-label">Select Yard — Within 100 mi of Fremont</div>
+  ` + PICK_N_PULL_YARDS.map((y, i) => `
+    <div class="yard-select-item ${state.currentYard && state.currentYard.name === y.name ? 'active' : ''}"
+         onclick="selectYard(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="yard-select-name">${y.short}</div>
+          <div class="yard-select-addr">${y.addr}, ${y.city}</div>
+          <div class="yard-select-phone">${y.phone}</div>
+        </div>
+        <div class="yard-select-miles">${y.miles} mi</div>
+      </div>
+    </div>
+  `).join('');
+  openModal('modal-yard-select');
+  setTimeout(fixTouchTargets, 30);
+}
+
 function setYardDisplay(yard, dist) {
-  const d = dist ? dist.toFixed(1)+' mi away' : '';
+  const isManual = !!state.manualYard;
+  const d = typeof dist === 'number' ? dist.toFixed(0)+' mi' : '';
   document.getElementById('yard-name').textContent = yard.name;
-  document.getElementById('yard-meta').textContent = yard.city;
+  document.getElementById('yard-meta').textContent = yard.addr + ' · ' + yard.city;
   document.getElementById('yard-dist-badge').textContent = d;
-  document.getElementById('header-yard-name').textContent = yard.name.replace('PICK-n-PULL ','');
-  document.getElementById('header-yard-dist').textContent = d;
+  document.getElementById('yard-phone').textContent = yard.phone || '';
+  document.getElementById('header-yard-name').textContent = yard.short || yard.name.replace('PICK-n-PULL ','');
+  document.getElementById('header-yard-dist').textContent = (isManual ? '📍 ' : '📡 ') + d;
 }
 
 function setYardFallback() {
-  state.currentYard = { name: 'PICK-n-PULL (GPS unavailable)', city: '', match: '' };
-  document.getElementById('yard-name').textContent = 'GPS unavailable';
-  document.getElementById('yard-meta').textContent = 'Showing all yards';
-  document.getElementById('header-yard-name').textContent = 'All Yards';
+  state.currentYard = PICK_N_PULL_YARDS[0]; // default to Newark
+  setYardDisplay(PICK_N_PULL_YARDS[0], PICK_N_PULL_YARDS[0].miles);
+  document.getElementById('header-yard-dist').textContent = 'GPS off';
   filterCarsByYard();
 }
 
@@ -939,14 +1031,17 @@ function loadDemoData() {
 // ── CAR FILTERING & RENDERING ─────────────────────────────────
 function filterCarsByYard() {
   const yard = state.currentYard;
-  if (!yard || yard.name.includes('unavailable')) {
+  if (!yard) {
     state.filteredCars = [...state.roiCars];
   } else {
-    // Match yard name loosely
-    const yardKey = yard.name.replace('PICK-n-PULL ','').toLowerCase();
-    state.filteredCars = state.roiCars.filter(c =>
-      c.yard.toLowerCase().includes(yardKey)
-    );
+    // Match by short name or any word in full name against the car's yard field
+    const yardWords = yard.short.toLowerCase().split(' ');
+    state.filteredCars = state.roiCars.filter(c => {
+      const carYard = (c.yard || '').toLowerCase();
+      return yardWords.some(w => w.length > 3 && carYard.includes(w));
+    });
+    // If no matches, show all (sheet yard names may differ slightly)
+    if (state.filteredCars.length === 0) state.filteredCars = [...state.roiCars];
   }
   applyFilter(state.currentFilter);
 }
@@ -994,14 +1089,89 @@ function roiClass(roi) {
   return 'bad';
 }
 
-function parsePartsFromString(str) {
+// ── BMW eBay SOLD PRICE DATABASE (6,848 sales, March 2026) ────
+// Format: 'Part Category': { low, median, high, count, keywords[] }
+// Ranges are 15th–85th percentile of real sold data.
+const BMW_PRICE_DB = {
+  'ECU / DME / DDE':        { low:  80, median: 172, high: 340, count: 228, keywords: ['ecu','dme','dde','engine control module','engine control unit','ews','cas module','dsc module'] },
+  'Instrument Cluster':     { low:  67, median: 130, high: 380, count:  96, keywords: ['instrument cluster','speedometer','gauge cluster','kombi','idash'] },
+  'Navigation / iDrive':    { low:  76, median: 130, high: 300, count: 181, keywords: ['idrive','navigation','ccc','cic','nbt','mghu','head unit','navi','nav module','comand'] },
+  'Amplifier / Audio':      { low:  71, median: 140, high: 390, count: 308, keywords: ['amplifier','amp','hifi','hi-fi','dsp','logic7','harman','bowers','top hifi'] },
+  'Headlight':              { low:  81, median: 215, high: 649, count: 365, keywords: ['headlight','head light','xenon','adaptive headlight','ahl','angel eye','headlamp','adaptive light'] },
+  'Tail Light':             { low:  67, median: 111, high: 200, count: 207, keywords: ['tail light','taillight','taillamp','tail lamp','rear light','brake light'] },
+  'Sunroof Motor':          { low:  52, median:  69, high: 140, count:   4, keywords: ['sunroof motor','moonroof motor','sunroof actuator','sunroof drive','skylight motor'] },
+  'Window Regulator':       { low:  57, median: 106, high: 175, count:  43, keywords: ['window regulator','window motor','power window'] },
+  'Door Module':            { low:  52, median:  68, high:  83, count:   2, keywords: ['door module','fem ','bem ','door control unit','dcu','fzd'] },
+  'Seat':                   { low:  60, median:  96, high: 250, count: 173, keywords: ['seat','leather seat','power seat','heated seat','sport seat','m seat'] },
+  'Airbag Module':          { low:  55, median:  80, high: 160, count:  20, keywords: ['airbag module','srs module','air bag module','airbag ecu','airbag sensor'] },
+  'Steering Wheel':         { low:  95, median: 203, high: 360, count:  98, keywords: ['steering wheel','multifunction steering','m steering','sport steering'] },
+  'Transfer Case Module':   { low:  64, median: 136, high: 300, count: 121, keywords: ['transfer case','atc','ptm module','xdrive module','awd module','vdc'] },
+  'Fuel Injector':          { low:  70, median: 127, high: 240, count:  84, keywords: ['injector','fuel injector','piezo injector','siemens injector','bosch injector'] },
+  'Turbo / Turbocharger':   { low:  60, median: 110, high: 335, count: 173, keywords: ['turbo','turbocharger','turbocharg','n54','n55','twin turbo','single turbo','wastegate'] },
+  'Alternator':             { low:  67, median:  92, high: 139, count:  31, keywords: ['alternator','generator'] },
+  'VANOS':                  { low:  63, median: 179, high: 290, count:   8, keywords: ['vanos','variable valve','vtec','valvetronic'] },
+  'Cooling / Radiator':     { low:  59, median: 115, high: 235, count: 140, keywords: ['radiator','cooling','coolant','water pump','thermostat','intercooler','heat exchanger'] },
+  'Suspension':             { low:  70, median: 131, high: 301, count: 138, keywords: ['control arm','strut','shock absorber','sway bar','thrust arm','trailing arm','subframe','coilover','spring'] },
+  'Bumper':                 { low:  60, median: 101, high: 330, count: 136, keywords: ['bumper','front bumper','rear bumper','bumper cover','m bumper'] },
+  'Mirror':                 { low:  70, median: 124, high: 238, count: 318, keywords: ['mirror','side mirror','door mirror','wing mirror','folding mirror','auto dim mirror'] },
+  'Rain / Light Sensor':    { low:  30, median:  45, high:  80, count:  25, keywords: ['rain sensor','light sensor','rain light sensor','auto light','fls','fks'] },
+  'AC / Climate':           { low:  60, median:  87, high: 140, count:  56, keywords: ['climate control','hvac','ac module','blower','air conditioning','ihka','ihkr','ac control'] },
+  'Cylinder Head':          { low:  71, median: 165, high: 400, count:  22, keywords: ['cylinder head','cyl head','n52 head','n54 head','n55 head','s65 head'] },
+  'Transmission':           { low:  64, median: 154, high: 375, count: 134, keywords: ['transmission','gearbox','zf','smg','dct','getrag','auto trans','manual trans'] },
+  'Differential':           { low: 110, median: 270, high: 630, count:  68, keywords: ['differential','diff','lsd','rear diff','front diff','axle'] },
+  'PDC / Parking Sensor':   { low:  58, median:  79, high: 161, count:  12, keywords: ['pdc','parking sensor','park distance','ultrasonic sensor','park assist'] },
+  'Tire Pressure Sensor':   { low:  55, median:  65, high: 127, count:  25, keywords: ['tire pressure','tpms','tyre pressure','rdc sensor','rdci'] },
+  'Fuel Pump':              { low:  60, median: 100, high: 320, count:  44, keywords: ['fuel pump','high pressure pump','hpfp','low pressure pump','lpfp'] },
+  'Power Steering':         { low:  75, median: 175, high: 548, count:  38, keywords: ['power steering','eps module','steering pump','electric steering','ehps'] },
+};
+
+// Mercedes/W204 price estimates (to be updated with Mercedes eBay data)
+const MERC_PRICE_DB = {
+  'Instrument Cluster':     { low: 100, median: 171, high: 300, count: 0, keywords: ['instrument cluster','speedometer','gauge cluster','kombi'] },
+  'Sunroof Motor':          { low: 180, median: 280, high: 400, count: 0, keywords: ['sunroof motor','moonroof motor','sunroof actuator'] },
+  'Rain / Light Sensor':    { low:  15, median:  20, high:  35, count: 0, keywords: ['rain sensor','light sensor','rain/light'] },
+  'Mirror':                 { low:  60, median:  95, high: 200, count: 0, keywords: ['mirror','homelink mirror','auto dim'] },
+  'Navigation / Head Unit': { low:  80, median: 150, high: 350, count: 0, keywords: ['comand','head unit','navigation','navi','audio 20','ntg'] },
+  'AMG Parts':              { low:  50, median: 115, high: 300, count: 0, keywords: ['amg','styling','sport package','amg spoiler','amg skirt'] },
+  'ECU / Control Module':   { low:  80, median: 150, high: 320, count: 0, keywords: ['ecu','control module','sbc','abs module','esp module','me9','me2'] },
+  'Headlight':              { low: 100, median: 220, high: 500, count: 0, keywords: ['headlight','xenon','bi-xenon','headlamp','led headlight'] },
+  'Tail Light':             { low:  60, median: 120, high: 250, count: 0, keywords: ['tail light','taillight','taillamp','rear light'] },
+  'Seat':                   { low:  80, median: 180, high: 400, count: 0, keywords: ['seat','leather seat','recaro','sport seat','heated seat'] },
+  'Steering Wheel':         { low:  80, median: 200, high: 400, count: 0, keywords: ['steering wheel','multifunction','sport steering','leather steering'] },
+  'Transmission':           { low: 150, median: 350, high: 800, count: 0, keywords: ['transmission','7g-tronic','722.9','nag2','gearbox'] },
+  'Suspension':             { low:  60, median: 130, high: 300, count: 0, keywords: ['control arm','strut','airmatic','abc suspension','spring','shock'] },
+};
+
+function lookupPartPrice(partName, platform) {
+  const name = partName.toLowerCase();
+  const isBMW = platform && (platform.toLowerCase().includes('bmw') || platform.toLowerCase().includes('e9') || platform.toLowerCase().includes('e46') || platform.toLowerCase().includes('e60') || platform.toLowerCase().includes('f30') || platform.toLowerCase().includes('g2'));
+  const db = isBMW ? BMW_PRICE_DB : MERC_PRICE_DB;
+
+  for (const [cat, data] of Object.entries(db)) {
+    if (data.keywords.some(kw => name.includes(kw))) {
+      return { category: cat, ...data };
+    }
+  }
+  // Fallback: try BMW DB for anything
+  for (const [cat, data] of Object.entries(BMW_PRICE_DB)) {
+    if (data.keywords.some(kw => name.includes(kw))) {
+      return { category: cat, ...data };
+    }
+  }
+  return null;
+}
+
+function parsePartsFromString(str, platform) {
   if (!str || str === '—') return [];
   return str.split('|').map(p => {
     p = p.trim();
     const priceMatch = p.match(/~?\$(\d+)/);
-    const price = priceMatch ? parseInt(priceMatch[1]) : 0;
+    const sheetPrice = priceMatch ? parseInt(priceMatch[1]) : 0;
     const name = p.replace(/~?\$\d+/, '').replace(/\|/g,'').trim();
-    return { name, price, rawStr: p };
+    // Look up eBay price range
+    const ebay = lookupPartPrice(name, platform);
+    const price = sheetPrice || (ebay ? ebay.median : 0);
+    return { name, price, sheetPrice, ebay, rawStr: p };
   }).filter(p => p.name);
 }
 
@@ -1012,7 +1182,7 @@ function renderCarList(cars) {
     return;
   }
   el.innerHTML = cars.map((car, idx) => {
-    const parts = parsePartsFromString(car.goodParts);
+    const parts = parsePartsFromString(car.goodParts, car.platform);
     const color = colorSwatch(car.vehicle + ' ' + (car.notes || ''));
     const vClass = verdictClass(car.verdict);
     const partTags = parts.slice(0,4).map(p =>
@@ -1046,10 +1216,11 @@ function renderCarList(cars) {
       </div>
     </div>`;
   }).join('');
+  setTimeout(fixTouchTargets, 30);
 }
 
 function updateStats(cars) {
-  const totalParts = cars.reduce((s,c) => s + parsePartsFromString(c.goodParts).length, 0);
+  const totalParts = cars.reduce((s,c) => s + parsePartsFromString(c.goodParts, c.platform).length, 0);
   const totalROI = cars.reduce((s,c) => s + (c.netROI || 0), 0);
   document.getElementById('stat-cars').textContent = cars.length;
   document.getElementById('stat-parts').textContent = totalParts;
@@ -1104,7 +1275,7 @@ function startPull(idx) {
   const car = state.filteredCars[idx] || state.roiCars[idx];
   if (!car) return;
   state.activeCar = car;
-  state.parts = parsePartsFromString(car.goodParts).map(p => ({
+  state.parts = parsePartsFromString(car.goodParts, car.platform).map(p => ({
     ...p,
     status: 'pending', // pending | active | done | skipped
     timerStart: null,
@@ -1143,16 +1314,28 @@ function renderPartsList() {
 
   el.innerHTML = state.parts.map((p, i) => {
     const timerStr = p.timerSeconds > 0 ? formatTime(p.timerSeconds) : '';
+    const ebayRange = p.ebay ? `$${p.ebay.low}–$${p.ebay.high}` : (p.price ? '~$'+p.price : '');
+    const ebaySource = p.ebay ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${p.ebay.count > 0 ? p.ebay.count+'sales' : 'est'}</span>` : '';
+    const ebayDetail = p.ebay ? `
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-display);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">eBay Sold · ${p.ebay.category}${p.ebay.count > 0 ? ' · '+p.ebay.count+' sales' : ''}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
+          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${p.ebay.low}</div><div style="font-size:9px;color:var(--muted)">LOW</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:16px;color:var(--accent);font-weight:700">$${p.ebay.median}</div><div style="font-size:9px;color:var(--muted)">MEDIAN</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${p.ebay.high}</div><div style="font-size:9px;color:var(--muted)">HIGH</div></div>
+        </div>
+      </div>` : '';
     return `
     <div class="part-item ${p.status === 'active' ? 'active' : ''} ${p.status === 'done' ? 'done' : ''} ${p.status === 'skipped' ? 'skipped' : ''}" id="part-item-${i}">
       <div class="part-item-header" onclick="togglePart(${i})">
         <div class="part-status-dot ${p.status === 'active' ? 'active' : p.status}"></div>
         <div class="part-name">${p.name}</div>
         ${timerStr ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${timerStr}</div>` : ''}
-        <div class="part-price">${p.price ? '~$'+p.price : ''}</div>
+        <div class="part-price">${ebayRange}${ebaySource}</div>
       </div>
       <div class="part-body ${p.status === 'active' ? 'open' : ''}" id="part-body-${i}">
         <div style="padding-top:12px">
+          ${ebayDetail}
           <div id="timer-display-${i}" class="timer-display ${p.status === 'active' ? 'running' : (p.status === 'done' ? 'done' : '')}">
             ${formatTime(p.timerSeconds)}
           </div>
@@ -1178,6 +1361,7 @@ function renderPartsList() {
   }).join('');
 
   updatePullTotal();
+  setTimeout(fixTouchTargets, 30);
 }
 
 function togglePart(i) {
@@ -1525,6 +1709,25 @@ function injectManifest() {
   document.getElementById('manifest-link').href = url;
 }
 
+// ── iOS PWA TOUCH FIX ─────────────────────────────────────────
+// In iOS standalone PWA mode, onclick on divs can silently fail.
+// Solution: convert all onclick-bearing non-button elements to proper touch targets.
+function fixTouchTargets() {
+  document.querySelectorAll('[onclick]').forEach(el => {
+    if (el._touchFixed) return;
+    el._touchFixed = true;
+    if (el.tagName !== 'BUTTON' && el.tagName !== 'A') {
+      el.style.cursor = 'pointer';
+      if (!el.getAttribute('role')) el.setAttribute('role', 'button');
+      el.addEventListener('touchend', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.click();
+      }, { passive: false });
+    }
+  });
+}
+
 // ── INIT ──────────────────────────────────────────────────────
 async function init() {
   loadSettings();
@@ -1538,6 +1741,9 @@ async function init() {
   } else {
     loadDemoData();
   }
+
+  // Fix touch targets for iOS PWA
+  setTimeout(fixTouchTargets, 100);
 }
 
 init();
