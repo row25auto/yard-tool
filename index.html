@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="robots" content="noindex">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Row25 Yard</title>
 <link rel="manifest" href="#" id="manifest-link">
@@ -564,6 +563,13 @@
           Change Yard
         </button>
       </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+        <div id="sync-status" style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">No cached data</div>
+        <button class="btn btn-sm" id="sync-now-btn" onclick="syncNow()">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+          Sync Now
+        </button>
+      </div>
     </div>
 
     <div class="stats-row">
@@ -588,6 +594,7 @@
       <div class="filter-chip" onclick="filterCars('MAYBE',this)">⚠️ Maybe</div>
       <div class="filter-chip" onclick="filterCars('BMW',this)">BMW</div>
       <div class="filter-chip" onclick="filterCars('Mercedes',this)">Mercedes</div>
+      <div class="filter-chip" onclick="filterCars('Audi',this)">Audi</div>
     </div>
 
     <div id="car-list">
@@ -675,7 +682,7 @@
     </div>
 
     <div style="margin-top:16px">
-      <button class="btn full" onclick="loadSheet()">
+      <button class="btn full" onclick="syncNow()">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
         Reload Sheet Data
       </button>
@@ -930,6 +937,69 @@ function setYardFallback() {
 }
 
 // ── SHEET LOADING ─────────────────────────────────────────────
+// ── OFFLINE CACHE ─────────────────────────────────────────────
+function saveCache() {
+  try {
+    const cache = {
+      roiCars: state.roiCars,
+      syncTime: Date.now(),
+    };
+    localStorage.setItem('r25_cache', JSON.stringify(cache));
+    updateSyncStatus();
+  } catch(e) {
+    console.warn('Cache save failed:', e);
+  }
+}
+
+function loadCache() {
+  try {
+    const raw = localStorage.getItem('r25_cache');
+    if (!raw) return false;
+    const cache = JSON.parse(raw);
+    if (!cache.roiCars || !cache.roiCars.length) return false;
+    state.roiCars = cache.roiCars;
+    filterCarsByYard();
+    updateInfoPanel();
+    updateSyncStatus();
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
+
+function updateSyncStatus() {
+  const raw = localStorage.getItem('r25_cache');
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  if (!raw) { el.textContent = 'No cached data — tap Sync Now'; el.style.color = 'var(--red)'; return; }
+  try {
+    const cache = JSON.parse(raw);
+    const mins  = Math.floor((Date.now() - cache.syncTime) / 60000);
+    const hrs   = Math.floor(mins / 60);
+    const age   = hrs > 0 ? `${hrs}h ago` : mins < 2 ? 'just now' : `${mins}m ago`;
+    const cars  = cache.roiCars || [];
+    // Count unique yards
+    const yardCounts = {};
+    cars.forEach(c => {
+      const y = (c.yard || 'Unknown').replace('PICK-n-PULL ','');
+      yardCounts[y] = (yardCounts[y] || 0) + 1;
+    });
+    const yardCount = Object.keys(yardCounts).length;
+    el.textContent = `✓ ${cars.length} cars · ${yardCount} yards · ${age}`;
+    el.style.color = hrs > 12 ? 'var(--yellow)' : 'var(--green)';
+    el.title = Object.entries(yardCounts).map(([y,n]) => `${y}: ${n}`).join('\n');
+  } catch(e) {
+    el.textContent = 'Cache error'; el.style.color = 'var(--red)';
+  }
+}
+
+async function syncNow() {
+  const btn = document.getElementById('sync-now-btn');
+  if (btn) { btn.innerHTML = '<div class="loading-spinner"></div>'; btn.disabled = true; }
+  await loadSheet();
+  if (btn) { btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg> Sync Now`; btn.disabled = false; }
+}
+
 async function loadSheet() {
   const sheetId = getSetting('sheet_id') || '1yd8JnPxde3MaRA3SbftTrgCkVcMF5vp9VfT63ugZo2Y';
   const apiKey  = getSetting('sheets_key');
@@ -957,10 +1027,17 @@ async function loadSheet() {
     parseSheet1(s1Json.values || []);
     filterCarsByYard();
     updateInfoPanel();
-    toast('Sheet loaded — '+state.roiCars.length+' cars');
+    saveCache();
+    toast('✓ Synced — '+state.roiCars.length+' cars cached for offline use');
   } catch(e) {
-    toast('Sheet load failed: ' + e.message);
-    loadDemoData();
+    // Network failed — try to load from cache
+    const hasCached = loadCache();
+    if (hasCached) {
+      toast('Offline — showing cached data');
+    } else {
+      toast('No connection and no cache — add API keys in Settings');
+      loadDemoData();
+    }
   }
 }
 
@@ -1057,8 +1134,9 @@ function applyFilter(type) {
   let cars = [...state.filteredCars];
   if (type === 'GO') cars = cars.filter(c => c.verdict.includes('GO'));
   else if (type === 'MAYBE') cars = cars.filter(c => c.verdict.includes('MAYBE'));
-  else if (type === 'BMW') cars = cars.filter(c => c.platform.toLowerCase().includes('bmw') || c.vehicle.toLowerCase().includes('bmw') || c.vin.startsWith('WBA'));
+  else if (type === 'BMW') cars = cars.filter(c => c.platform.toLowerCase().includes('bmw') || c.vehicle.toLowerCase().includes('bmw') || c.vin.startsWith('WBA') || c.vin.startsWith('WBS') || c.vin.startsWith('5UX'));
   else if (type === 'Mercedes') cars = cars.filter(c => c.vin.startsWith('WD') || c.platform.toLowerCase().includes('w2') || c.vehicle.toLowerCase().includes('class'));
+  else if (type === 'Audi') cars = cars.filter(c => c.vin.startsWith('WAU') || c.vin.startsWith('WA1') || c.vin.startsWith('TRU') || c.platform.toLowerCase().includes('audi') || c.vehicle.toLowerCase().includes('audi'));
 
   renderCarList(cars);
   updateStats(state.filteredCars);
@@ -1089,89 +1167,68 @@ function roiClass(roi) {
   return 'bad';
 }
 
-// ── BMW eBay SOLD PRICE DATABASE (6,848 sales, March 2026) ────
-// Format: 'Part Category': { low, median, high, count, keywords[] }
-// Ranges are 15th–85th percentile of real sold data.
-const BMW_PRICE_DB = {
-  'ECU / DME / DDE':        { low:  80, median: 172, high: 340, count: 228, keywords: ['ecu','dme','dde','engine control module','engine control unit','ews','cas module','dsc module'] },
-  'Instrument Cluster':     { low:  67, median: 130, high: 380, count:  96, keywords: ['instrument cluster','speedometer','gauge cluster','kombi','idash'] },
-  'Navigation / iDrive':    { low:  76, median: 130, high: 300, count: 181, keywords: ['idrive','navigation','ccc','cic','nbt','mghu','head unit','navi','nav module','comand'] },
-  'Amplifier / Audio':      { low:  71, median: 140, high: 390, count: 308, keywords: ['amplifier','amp','hifi','hi-fi','dsp','logic7','harman','bowers','top hifi'] },
-  'Headlight':              { low:  81, median: 215, high: 649, count: 365, keywords: ['headlight','head light','xenon','adaptive headlight','ahl','angel eye','headlamp','adaptive light'] },
-  'Tail Light':             { low:  67, median: 111, high: 200, count: 207, keywords: ['tail light','taillight','taillamp','tail lamp','rear light','brake light'] },
-  'Sunroof Motor':          { low:  52, median:  69, high: 140, count:   4, keywords: ['sunroof motor','moonroof motor','sunroof actuator','sunroof drive','skylight motor'] },
-  'Window Regulator':       { low:  57, median: 106, high: 175, count:  43, keywords: ['window regulator','window motor','power window'] },
-  'Door Module':            { low:  52, median:  68, high:  83, count:   2, keywords: ['door module','fem ','bem ','door control unit','dcu','fzd'] },
-  'Seat':                   { low:  60, median:  96, high: 250, count: 173, keywords: ['seat','leather seat','power seat','heated seat','sport seat','m seat'] },
-  'Airbag Module':          { low:  55, median:  80, high: 160, count:  20, keywords: ['airbag module','srs module','air bag module','airbag ecu','airbag sensor'] },
-  'Steering Wheel':         { low:  95, median: 203, high: 360, count:  98, keywords: ['steering wheel','multifunction steering','m steering','sport steering'] },
-  'Transfer Case Module':   { low:  64, median: 136, high: 300, count: 121, keywords: ['transfer case','atc','ptm module','xdrive module','awd module','vdc'] },
-  'Fuel Injector':          { low:  70, median: 127, high: 240, count:  84, keywords: ['injector','fuel injector','piezo injector','siemens injector','bosch injector'] },
-  'Turbo / Turbocharger':   { low:  60, median: 110, high: 335, count: 173, keywords: ['turbo','turbocharger','turbocharg','n54','n55','twin turbo','single turbo','wastegate'] },
-  'Alternator':             { low:  67, median:  92, high: 139, count:  31, keywords: ['alternator','generator'] },
-  'VANOS':                  { low:  63, median: 179, high: 290, count:   8, keywords: ['vanos','variable valve','vtec','valvetronic'] },
-  'Cooling / Radiator':     { low:  59, median: 115, high: 235, count: 140, keywords: ['radiator','cooling','coolant','water pump','thermostat','intercooler','heat exchanger'] },
-  'Suspension':             { low:  70, median: 131, high: 301, count: 138, keywords: ['control arm','strut','shock absorber','sway bar','thrust arm','trailing arm','subframe','coilover','spring'] },
-  'Bumper':                 { low:  60, median: 101, high: 330, count: 136, keywords: ['bumper','front bumper','rear bumper','bumper cover','m bumper'] },
-  'Mirror':                 { low:  70, median: 124, high: 238, count: 318, keywords: ['mirror','side mirror','door mirror','wing mirror','folding mirror','auto dim mirror'] },
-  'Rain / Light Sensor':    { low:  30, median:  45, high:  80, count:  25, keywords: ['rain sensor','light sensor','rain light sensor','auto light','fls','fks'] },
-  'AC / Climate':           { low:  60, median:  87, high: 140, count:  56, keywords: ['climate control','hvac','ac module','blower','air conditioning','ihka','ihkr','ac control'] },
-  'Cylinder Head':          { low:  71, median: 165, high: 400, count:  22, keywords: ['cylinder head','cyl head','n52 head','n54 head','n55 head','s65 head'] },
-  'Transmission':           { low:  64, median: 154, high: 375, count: 134, keywords: ['transmission','gearbox','zf','smg','dct','getrag','auto trans','manual trans'] },
-  'Differential':           { low: 110, median: 270, high: 630, count:  68, keywords: ['differential','diff','lsd','rear diff','front diff','axle'] },
-  'PDC / Parking Sensor':   { low:  58, median:  79, high: 161, count:  12, keywords: ['pdc','parking sensor','park distance','ultrasonic sensor','park assist'] },
-  'Tire Pressure Sensor':   { low:  55, median:  65, high: 127, count:  25, keywords: ['tire pressure','tpms','tyre pressure','rdc sensor','rdci'] },
-  'Fuel Pump':              { low:  60, median: 100, high: 320, count:  44, keywords: ['fuel pump','high pressure pump','hpfp','low pressure pump','lpfp'] },
-  'Power Steering':         { low:  75, median: 175, high: 548, count:  38, keywords: ['power steering','eps module','steering pump','electric steering','ehps'] },
+// ── eBay reference prices — used ONLY during photo assessment ──
+// Source of truth for part prices is the ROI tab (Col M).
+// This slim table provides eBay context when photographing a part onsite.
+// BMW: 6,848 sales | Mercedes: ROI.gs | Audi: 7,113 sales (March 2026)
+const EBAY_REF = {
+  // BMW
+  'dme':                    { make:'BMW', cat:'ECU / DME',           low:  80, median: 175, high: 340, count: 223 },
+  'instrument cluster':     { make:'BMW', cat:'Instrument Cluster',  low:  67, median: 134, high: 380, count:  97 },
+  'idrive':                 { make:'BMW', cat:'Navigation / iDrive', low:  70, median: 120, high: 300, count:  83 },
+  'nbt':                    { make:'BMW', cat:'Navigation / iDrive', low:  70, median: 120, high: 300, count:  83 },
+  'cic':                    { make:'BMW', cat:'Navigation / iDrive', low:  70, median: 120, high: 300, count:  83 },
+  'amplifier':              { make:'ALL', cat:'Premium Amplifier',   low:  75, median: 150, high: 468, count: 235 },
+  'headlight':              { make:'ALL', cat:'Headlights',          low:  83, median: 250, high: 895, count: 725 },
+  'tail light':             { make:'ALL', cat:'Tail Lights',         low:  70, median: 130, high: 275, count: 559 },
+  'sunroof motor':          { make:'ALL', cat:'Sunroof Motor',       low:  52, median:  80, high: 200, count:  20 },
+  'window regulator':       { make:'ALL', cat:'Window Regulator',    low:  57, median: 115, high: 186, count:  62 },
+  'climate control':        { make:'ALL', cat:'Climate Control',     low:  59, median: 110, high: 200, count:  49 },
+  'ihka':                   { make:'BMW', cat:'Climate Control',     low:  59, median:  90, high: 130, count:  39 },
+  'folding mirror':         { make:'ALL', cat:'Folding Mirror',      low:  70, median: 155, high: 302, count:  85 },
+  'pdc':                    { make:'ALL', cat:'PDC / Parking',       low:  58, median: 100, high: 205, count:  20 },
+  'parking sensor':         { make:'ALL', cat:'PDC / Parking',       low:  58, median: 100, high: 205, count:  20 },
+  'fem module':             { make:'BMW', cat:'Comfort / FEM',       low:  65, median:  94, high: 125, count:  34 },
+  'comfort module':         { make:'ALL', cat:'Comfort Module',      low:  65, median: 140, high: 530, count:  89 },
+  'power steering':         { make:'ALL', cat:'Power Steering',      low: 175, median: 340, high: 799, count: 189 },
+  'engine wiring harness':  { make:'ALL', cat:'Engine Wiring Harness', low: 90, median: 160, high: 242, count: 26 },
+  // Mercedes-specific
+  'comand':                 { make:'Mercedes', cat:'COMAND Head Unit',   low: 100, median: 192, high: 450, count: 0 },
+  'rain sensor':            { make:'Mercedes', cat:'Rain/Light Sensor',  low:  15, median:  20, high:  35, count: 0 },
+  'amg':                    { make:'Mercedes', cat:'AMG Styling Parts',  low:  50, median: 115, high: 200, count: 0 },
+  'homelink':               { make:'Mercedes', cat:'HomeLink Mirror',    low:  60, median:  95, high: 150, count: 0 },
+  'keyless-go':             { make:'Mercedes', cat:'Keyless-Go Module',  low:  52, median: 185, high: 519, count: 0 },
+  'blind spot':             { make:'Mercedes', cat:'Blind Spot Module',  low:  70, median: 142, high: 560, count: 0 },
+  'distronic':              { make:'Mercedes', cat:'Radar / Distronic',  low:  70, median: 142, high: 400, count: 0 },
+  'airmatic':               { make:'Mercedes', cat:'Suspension Module',  low: 102, median: 219, high: 820, count: 0 },
+  // Audi-specific
+  'mmi':                    { make:'Audi', cat:'Navigation / MMI',       low: 127, median: 182, high: 350, count:  38 },
+  'virtual cockpit':        { make:'Audi', cat:'Instrument Cluster',     low: 115, median: 180, high: 375, count:  90 },
+  'bose':                   { make:'Audi', cat:'Premium Amplifier/BOSE', low: 110, median: 142, high: 280, count: 100 },
+  'steering rack':          { make:'Audi', cat:'Power Steering Rack',    low: 200, median: 400, high: 799, count: 179 },
+  'rack and pinion':        { make:'Audi', cat:'Power Steering Rack',    low: 200, median: 400, high: 799, count: 179 },
+  'gateway module':         { make:'Audi', cat:'Comfort/Gateway Module', low: 120, median: 185, high: 530, count:  55 },
 };
 
-// Mercedes/W204 price estimates (to be updated with Mercedes eBay data)
-const MERC_PRICE_DB = {
-  'Instrument Cluster':     { low: 100, median: 171, high: 300, count: 0, keywords: ['instrument cluster','speedometer','gauge cluster','kombi'] },
-  'Sunroof Motor':          { low: 180, median: 280, high: 400, count: 0, keywords: ['sunroof motor','moonroof motor','sunroof actuator'] },
-  'Rain / Light Sensor':    { low:  15, median:  20, high:  35, count: 0, keywords: ['rain sensor','light sensor','rain/light'] },
-  'Mirror':                 { low:  60, median:  95, high: 200, count: 0, keywords: ['mirror','homelink mirror','auto dim'] },
-  'Navigation / Head Unit': { low:  80, median: 150, high: 350, count: 0, keywords: ['comand','head unit','navigation','navi','audio 20','ntg'] },
-  'AMG Parts':              { low:  50, median: 115, high: 300, count: 0, keywords: ['amg','styling','sport package','amg spoiler','amg skirt'] },
-  'ECU / Control Module':   { low:  80, median: 150, high: 320, count: 0, keywords: ['ecu','control module','sbc','abs module','esp module','me9','me2'] },
-  'Headlight':              { low: 100, median: 220, high: 500, count: 0, keywords: ['headlight','xenon','bi-xenon','headlamp','led headlight'] },
-  'Tail Light':             { low:  60, median: 120, high: 250, count: 0, keywords: ['tail light','taillight','taillamp','rear light'] },
-  'Seat':                   { low:  80, median: 180, high: 400, count: 0, keywords: ['seat','leather seat','recaro','sport seat','heated seat'] },
-  'Steering Wheel':         { low:  80, median: 200, high: 400, count: 0, keywords: ['steering wheel','multifunction','sport steering','leather steering'] },
-  'Transmission':           { low: 150, median: 350, high: 800, count: 0, keywords: ['transmission','7g-tronic','722.9','nag2','gearbox'] },
-  'Suspension':             { low:  60, median: 130, high: 300, count: 0, keywords: ['control arm','strut','airmatic','abc suspension','spring','shock'] },
-};
-
-function lookupPartPrice(partName, platform) {
+function lookupEbayRef(partName) {
+  // Used ONLY during photo assessment — part prices come from ROI tab
   const name = partName.toLowerCase();
-  const isBMW = platform && (platform.toLowerCase().includes('bmw') || platform.toLowerCase().includes('e9') || platform.toLowerCase().includes('e46') || platform.toLowerCase().includes('e60') || platform.toLowerCase().includes('f30') || platform.toLowerCase().includes('g2'));
-  const db = isBMW ? BMW_PRICE_DB : MERC_PRICE_DB;
-
-  for (const [cat, data] of Object.entries(db)) {
-    if (data.keywords.some(kw => name.includes(kw))) {
-      return { category: cat, ...data };
-    }
-  }
-  // Fallback: try BMW DB for anything
-  for (const [cat, data] of Object.entries(BMW_PRICE_DB)) {
-    if (data.keywords.some(kw => name.includes(kw))) {
-      return { category: cat, ...data };
-    }
+  for (const [kw, data] of Object.entries(EBAY_REF)) {
+    if (name.includes(kw)) return data;
   }
   return null;
 }
 
 function parsePartsFromString(str, platform) {
+  // Prices come directly from the ROI tab Col M — e.g. "Instrument Cluster ~$171"
+  // Sheet price IS the source of truth. eBay ref only shown during photo assessment.
   if (!str || str === '—') return [];
   return str.split('|').map(p => {
     p = p.trim();
     const priceMatch = p.match(/~?\$(\d+)/);
-    const sheetPrice = priceMatch ? parseInt(priceMatch[1]) : 0;
+    const price = priceMatch ? parseInt(priceMatch[1]) : 0;
     const name = p.replace(/~?\$\d+/, '').replace(/\|/g,'').trim();
-    // Look up eBay price range
-    const ebay = lookupPartPrice(name, platform);
-    const price = sheetPrice || (ebay ? ebay.median : 0);
-    return { name, price, sheetPrice, ebay, rawStr: p };
+    return { name, price, rawStr: p };
   }).filter(p => p.name);
 }
 
@@ -1314,15 +1371,19 @@ function renderPartsList() {
 
   el.innerHTML = state.parts.map((p, i) => {
     const timerStr = p.timerSeconds > 0 ? formatTime(p.timerSeconds) : '';
-    const ebayRange = p.ebay ? `$${p.ebay.low}–$${p.ebay.high}` : (p.price ? '~$'+p.price : '');
-    const ebaySource = p.ebay ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${p.ebay.count > 0 ? p.ebay.count+'sales' : 'est'}</span>` : '';
-    const ebayDetail = p.ebay ? `
+    // Price header: sheet price from ROI tab
+    const priceLabel = p.price ? `~$${p.price}` : '';
+    // eBay range box: only shown after photo assessment, using slim reference lookup
+    const ebayRef = p.ebayRef || null;
+    const ebayDetail = ebayRef ? `
       <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:10px;color:var(--muted);font-family:var(--font-display);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">eBay Sold · ${p.ebay.category}${p.ebay.count > 0 ? ' · '+p.ebay.count+' sales' : ''}</div>
+        <div style="font-size:10px;color:var(--muted);font-family:var(--font-display);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+          eBay Sold · ${ebayRef.cat}${ebayRef.count > 0 ? ' · '+ebayRef.count+' sales' : ' · est'}
+        </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
-          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${p.ebay.low}</div><div style="font-size:9px;color:var(--muted)">LOW</div></div>
-          <div><div style="font-family:var(--font-mono);font-size:16px;color:var(--accent);font-weight:700">$${p.ebay.median}</div><div style="font-size:9px;color:var(--muted)">MEDIAN</div></div>
-          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${p.ebay.high}</div><div style="font-size:9px;color:var(--muted)">HIGH</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${ebayRef.low}</div><div style="font-size:9px;color:var(--muted)">LOW</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:16px;color:var(--accent);font-weight:700">$${ebayRef.median}</div><div style="font-size:9px;color:var(--muted)">MEDIAN</div></div>
+          <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${ebayRef.high}</div><div style="font-size:9px;color:var(--muted)">HIGH</div></div>
         </div>
       </div>` : '';
     return `
@@ -1331,7 +1392,7 @@ function renderPartsList() {
         <div class="part-status-dot ${p.status === 'active' ? 'active' : p.status}"></div>
         <div class="part-name">${p.name}</div>
         ${timerStr ? `<div style="font-family:var(--font-mono);font-size:11px;color:var(--muted)">${timerStr}</div>` : ''}
-        <div class="part-price">${ebayRange}${ebaySource}</div>
+        <div class="part-price">${priceLabel}</div>
       </div>
       <div class="part-body ${p.status === 'active' ? 'open' : ''}" id="part-body-${i}">
         <div style="padding-top:12px">
@@ -1376,6 +1437,20 @@ function renderInlineAssessment(a) {
   return `<div class="assessment ${a.type}">
     <div class="assessment-verdict">${a.type.toUpperCase()} — ${a.verdict}</div>
     <div style="font-size:12px;line-height:1.5">${a.notes}</div>
+  </div>`;
+}
+
+function renderEbayRef(ref) {
+  if (!ref) return '';
+  return `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-top:8px">
+    <div style="font-size:10px;color:var(--muted);font-family:var(--font-display);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">
+      eBay Sold · ${ref.cat}${ref.count > 0 ? ' · '+ref.count+' sales' : ' · est'}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;text-align:center">
+      <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${ref.low}</div><div style="font-size:9px;color:var(--muted)">LOW</div></div>
+      <div><div style="font-family:var(--font-mono);font-size:16px;color:var(--accent);font-weight:700">$${ref.median}</div><div style="font-size:9px;color:var(--muted)">MEDIAN</div></div>
+      <div><div style="font-family:var(--font-mono);font-size:13px;color:var(--text)">$${ref.high}</div><div style="font-size:9px;color:var(--muted)">HIGH</div></div>
+    </div>
   </div>`;
 }
 
@@ -1586,11 +1661,14 @@ Rules: BUY = clean, looks fully functional. BENCH TEST = works but needs verific
     };
 
     state.parts[modalPartIndex].assessment = assessment;
+    // Attach eBay reference range — shown alongside assessment result
+    state.parts[modalPartIndex].ebayRef = lookupEbayRef(p.name);
 
     // Auto-stop timer when photo analyzed
     timerStop(modalPartIndex);
 
-    document.getElementById('assessment-result').innerHTML = renderInlineAssessment(assessment);
+    document.getElementById('assessment-result').innerHTML =
+      renderInlineAssessment(assessment) + renderEbayRef(state.parts[modalPartIndex].ebayRef);
     document.getElementById('part-action-btns').style.display = 'grid';
     renderPartsList();
 
@@ -1734,16 +1812,29 @@ async function init() {
   injectManifest();
   locateYard();
   renderLogScreen();
+  updateSyncStatus();
 
-  // Auto-load if keys are present
+  // 1. Load from cache immediately — works offline, instant display
+  const hasCached = loadCache();
+
+  // 2. If we have API keys, attempt background sync to get latest data
   if (getSetting('sheets_key')) {
-    await loadSheet();
-  } else {
+    if (!hasCached) {
+      // No cache — show loading state and wait for sync
+      document.getElementById('car-list').innerHTML = `<div class="empty-state"><div class="loading-spinner"></div><p style="margin-top:12px">Loading from Google Sheet…</p></div>`;
+      await loadSheet();
+    } else {
+      // Have cache — show it immediately, sync silently in background
+      loadSheet().then(() => {}).catch(() => {});
+    }
+  } else if (!hasCached) {
     loadDemoData();
   }
 
   // Fix touch targets for iOS PWA
   setTimeout(fixTouchTargets, 100);
+  // Refresh sync status display every minute
+  setInterval(updateSyncStatus, 60000);
 }
 
 init();
