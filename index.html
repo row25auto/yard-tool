@@ -786,6 +786,8 @@ const state = {
   activeCar: null,
   activePart: null,
   activePartIndex: null,
+  savedScrollPos: null,
+  savedCarIdx: null,
   parts: [],           // Parts for active car [{name, price, status, timer, photos, assessment}]
   pullLog: [],         // Completed pulls today
   photos: { label: null, face: null },
@@ -820,6 +822,13 @@ function showScreen(name, btn) {
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
   btn.classList.add('active');
+
+  // Restore scroll position when returning to yard screen
+  if (name === 'yard' && state.savedScrollPos != null) {
+    requestAnimationFrame(() => {
+      document.getElementById('screen-yard').scrollTop = state.savedScrollPos;
+    });
+  }
 }
 
 // ── LOCATION & YARD DETECTION ─────────────────────────────────
@@ -893,14 +902,16 @@ function selectYard(idx) {
 }
 
 function openYardSelector() {
-  // Build yard list in modal
   const list = document.getElementById('yard-select-list');
   list.innerHTML = `
-    <button class="btn full" style="margin-bottom:12px" onclick="useGPS()">
+    <button class="btn full" style="margin-bottom:8px" onclick="useGPS()">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
       Use GPS (auto-detect nearest)
     </button>
-    <div class="section-label">Select Yard — Within 100 mi of Fremont</div>
+    <button class="btn full" style="margin-bottom:12px;background:var(--card);color:var(--text);border:1px solid var(--border)" onclick="selectAllYards()">
+      🗺️ All Yards — Show Every Car
+    </button>
+    <div class="section-label">Select Specific Yard — Within 100 mi of Fremont</div>
   ` + PICK_N_PULL_YARDS.map((y, i) => `
     <div class="yard-select-item ${state.currentYard && state.currentYard.name === y.name ? 'active' : ''}"
          onclick="selectYard(${i})">
@@ -916,6 +927,19 @@ function openYardSelector() {
   `).join('');
   openModal('modal-yard-select');
   setTimeout(fixTouchTargets, 30);
+}
+
+function selectAllYards() {
+  state.currentYard = null;
+  state.manualYard = null;
+  document.getElementById('yard-name').textContent = 'All Yards';
+  document.getElementById('yard-meta').textContent = 'Showing all cars regardless of yard';
+  document.getElementById('yard-dist-badge').textContent = '';
+  document.getElementById('header-yard-name').textContent = 'All Yards';
+  document.getElementById('header-yard-dist').textContent = '🗺️';
+  document.getElementById('yard-phone').textContent = '';
+  closeModal('modal-yard-select');
+  filterCarsByYard();
 }
 
 function setYardDisplay(yard, dist) {
@@ -1019,7 +1043,7 @@ async function loadSheet() {
     const roiJson = await roiRes.json();
 
     // Load Sheet1 for image URLs
-    const s1Url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:O?key=${apiKey}`;
+    const s1Url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/Sheet1!A:P?key=${apiKey}`;
     const s1Res = await fetch(s1Url);
     const s1Json = await s1Res.json();
 
@@ -1074,21 +1098,34 @@ function parseSheet1(rows) {
   // Build VIN→image/listing map
   if (!rows.length) return;
   const vinMap = {};
+  // Find header row to locate columns dynamically
+  const hdrs = rows[0].map(h => (h||'').toLowerCase());
+  const imageUrlCol = hdrs.findIndex(h => h === 'image url'); // col O
+  const listingCol  = hdrs.findIndex(h => h === 'listing url' || h === 'listing'); // col D
+
   for (let i = 1; i < rows.length; i++) {
     const r = rows[i];
     const vin = r[1];
     if (!vin) continue;
-    // Image col is index 2 — stored as =IMAGE("url") formula, API returns formula text
-    let imgUrl = null;
-    const imgCell = r[2] || '';
-    const match = imgCell.match(/IMAGE\("([^"]+)"\)/i);
-    if (match) imgUrl = match[1];
-    vinMap[vin] = { imgUrl, listingUrl: r[3] || null };
+
+    // Try col O (plain text image URL) first
+    let imgUrl = (imageUrlCol >= 0 && r[imageUrlCol]) ? r[imageUrlCol] : null;
+
+    // Fallback: extract from =IMAGE() formula in col C
+    if (!imgUrl) {
+      const imgCell = r[2] || '';
+      const match = imgCell.match(/IMAGE\("([^"]+)"\)/i);
+      if (match) imgUrl = match[1];
+    }
+
+    const listingUrl = listingCol >= 0 ? (r[listingCol] || null) : (r[3] || null);
+    vinMap[vin] = { imgUrl, listingUrl };
   }
+
   // Merge into roiCars
   for (const car of state.roiCars) {
     if (vinMap[car.vin]) {
-      car.imgUrl = vinMap[car.vin].imgUrl;
+      car.imgUrl     = vinMap[car.vin].imgUrl;
       car.listingUrl = vinMap[car.vin].listingUrl;
     }
   }
@@ -1332,9 +1369,14 @@ function startPull(idx) {
   const car = state.filteredCars[idx] || state.roiCars[idx];
   if (!car) return;
   state.activeCar = car;
+
+  // Save scroll position and active car index so we can restore on back
+  state.savedScrollPos = document.getElementById('screen-yard').scrollTop;
+  state.savedCarIdx = idx;
+
   state.parts = parsePartsFromString(car.goodParts, car.platform).map(p => ({
     ...p,
-    status: 'pending', // pending | active | done | skipped
+    status: 'pending',
     timerStart: null,
     timerEnd: null,
     timerSeconds: 0,
@@ -1344,7 +1386,6 @@ function startPull(idx) {
   }));
 
   renderPullScreen();
-  // Switch to pull tab
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.nav-btn')[1].classList.add('active');
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
